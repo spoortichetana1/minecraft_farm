@@ -113,12 +113,12 @@ function isSolidBlock(x, y) {
 // Update physics + movement
 function update() {
     // Horizontal input
-    if (keys["KeyA"])      player.vx = -player.speed;
-    else if (keys["KeyD"]) player.vx =  player.speed;
-    else                   player.vx = 0;
+    if (keys["ArrowLeft"])      player.vx = -player.speed;
+    else if (keys["ArrowRight"]) player.vx =  player.speed;
+    else                         player.vx = 0;
 
     // Jump
-    if (keys["Space"] && !player.jumping) {
+    if (keys["ArrowUp"] && !player.jumping) {
         player.vy = -10;
         player.jumping = true;
     }
