@@ -1,5 +1,7 @@
 # Minecraft – Walk in the Park
 
+TRY GAME HERE --> https://spoortichetana1.github.io/minecraft_farm/
+
 A tiny 2D block-based game inspired by Minecraft. Play as a chicken, explore a procedurally generated side-scrolling world, place and break blocks, watch day/night cycles, and grow crops.
 
 ---
