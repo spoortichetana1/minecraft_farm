@@ -31,6 +31,16 @@ const PLACEABLE_BLOCKS = [
   BLOCK_FARMLAND // farmland for crops
 ];
 
+const BLOCK_DEFS = {
+  [BLOCK_GRASS]: { name: "Grass", color: "#228B22", solid: true },
+  [BLOCK_DIRT]: { name: "Dirt", color: "#8B4513", solid: true },
+  [BLOCK_STONE]: { name: "Stone", color: "#7f7f7f", solid: true },
+  [BLOCK_WOOD]: { name: "Wood", color: "#A0522D", solid: true },
+  [BLOCK_LEAVES]: { name: "Leaves", color: "#4CAF50", solid: true },
+  [BLOCK_WATER]: { name: "Water", color: "#1E90FF", solid: false },
+  [BLOCK_FARMLAND]: { name: "Farmland", color: "#5A3C1A", solid: true }
+};
+
 let selectedBlockIndex = 0;
 
 // ===== Crops (growth timers) =====
@@ -42,9 +52,14 @@ let cropTimers = Array.from({ length: WORLD_HEIGHT }, () =>
 let timeOfDay = 0;         // 0..1
 const DAY_SPEED = 0.0005;
 
-// ===== Camera (world → screen) =====
+// ===== Camera (world -> screen) =====
 let cameraX = 0;
 let cameraY = 0; // we keep Y mostly fixed for now
+
+let wheat = 0;
+let statusMessage = "A/D move, Space jump, 1-5 select, LMB place, RMB break";
+let statusTimer = 240;
+let mouseTile = { x: -1, y: -1 };
 
 function updateCamera() {
   // center camera on player horizontally
@@ -157,6 +172,17 @@ let player = {
 };
 
 const GRAVITY = 0.5;
+const MAX_FALL_SPEED = 14;
+const INTERACTION_RANGE = 5 * TILE_SIZE;
+
+function placePlayerAtSpawn() {
+  const spawnTileX = 6;
+  const groundY = heightMap[spawnTileX];
+  player.x = spawnTileX * TILE_SIZE;
+  player.y = groundY * TILE_SIZE - player.height;
+}
+
+placePlayerAtSpawn();
 
 // ===== Animals (optional extra critters) =====
 let animals = [
@@ -169,7 +195,11 @@ let keys = {};
 document.addEventListener("keydown", (e) => {
   keys[e.code] = true;
 
-  // hotbar 1–5
+  if (["Space", "ArrowLeft", "ArrowRight", "ArrowUp"].includes(e.code)) {
+    e.preventDefault();
+  }
+
+  // hotbar 1-5
   if (e.code === "Digit1") selectedBlockIndex = 0;
   if (e.code === "Digit2") selectedBlockIndex = 1;
   if (e.code === "Digit3") selectedBlockIndex = 2;
@@ -184,15 +214,28 @@ document.addEventListener("keyup", (e) => {
 // ===== Helpers =====
 function isSolidBlock(x, y) {
   if (x < 0 || y < 0 || x >= WORLD_WIDTH || y >= WORLD_HEIGHT) return false;
-  const block = world[y][x];
-  return (
-    block === BLOCK_GRASS   ||
-    block === BLOCK_DIRT    ||
-    block === BLOCK_STONE   ||
-    block === BLOCK_WOOD    ||
-    block === BLOCK_LEAVES  ||
-    block === BLOCK_FARMLAND
-  );
+  return Boolean(BLOCK_DEFS[world[y][x]]?.solid);
+}
+
+function setStatus(message, duration = 120) {
+  statusMessage = message;
+  statusTimer = duration;
+}
+
+function inWorldBounds(tileX, tileY) {
+  return tileX >= 0 && tileY >= 0 && tileX < WORLD_WIDTH && tileY < WORLD_HEIGHT;
+}
+
+function isWithinReach(tileX, tileY) {
+  const playerCenterX = player.x + player.width / 2;
+  const playerCenterY = player.y + player.height / 2;
+  const blockCenterX = tileX * TILE_SIZE + TILE_SIZE / 2;
+  const blockCenterY = tileY * TILE_SIZE + TILE_SIZE / 2;
+  return Math.hypot(blockCenterX - playerCenterX, blockCenterY - playerCenterY) <= INTERACTION_RANGE;
+}
+
+function getBlockName(block) {
+  return BLOCK_DEFS[block]?.name ?? "Air";
 }
 
 function updateCrops() {
@@ -217,10 +260,25 @@ function updateAnimals() {
   for (const a of animals) {
     // gravity
     a.vy += GRAVITY * 0.5;
+    if (a.vy > MAX_FALL_SPEED) a.vy = MAX_FALL_SPEED;
 
     // horizontal wander
-    let newX = a.x + a.dir * a.speed;
-    if (newX < 0 || newX + a.width > WORLD_PIXEL_WIDTH) {
+    const nextX = a.x + a.dir * a.speed;
+    const frontX = a.dir > 0
+      ? Math.floor((nextX + a.width) / TILE_SIZE)
+      : Math.floor(nextX / TILE_SIZE);
+    const footY = Math.floor((a.y + a.height + 1) / TILE_SIZE);
+    const bodyTop = Math.floor(a.y / TILE_SIZE);
+    const bodyBottom = Math.floor((a.y + a.height - 1) / TILE_SIZE);
+    let shouldTurn = nextX < 0 || nextX + a.width > WORLD_PIXEL_WIDTH;
+
+    for (let ty = bodyTop; ty <= bodyBottom; ty++) {
+      if (isSolidBlock(frontX, ty)) shouldTurn = true;
+    }
+    if (!isSolidBlock(frontX, footY)) shouldTurn = true;
+
+    let newX = nextX;
+    if (shouldTurn) {
       a.dir *= -1;
       newX = a.x + a.dir * a.speed;
     }
@@ -256,18 +314,21 @@ function update() {
   if (timeOfDay > 1) timeOfDay -= 1;
 
   // horizontal input
-  if (keys["KeyA"])      player.vx = -player.speed;
-  else if (keys["KeyD"]) player.vx =  player.speed;
+  if (keys["KeyA"] || keys["ArrowLeft"])      player.vx = -player.speed;
+  else if (keys["KeyD"] || keys["ArrowRight"]) player.vx =  player.speed;
   else                   player.vx = 0;
 
   // jump
-  if (keys["Space"] && !player.jumping) {
+  if ((keys["Space"] || keys["ArrowUp"]) && !player.jumping) {
     player.vy = -10;
     player.jumping = true;
   }
 
   // gravity
   player.vy += GRAVITY;
+  if (player.vy > MAX_FALL_SPEED) player.vy = MAX_FALL_SPEED;
+
+  if (statusTimer > 0) statusTimer--;
 
   // horizontal movement + collision
   let newX = player.x + player.vx;
@@ -283,7 +344,9 @@ function update() {
       break;
     }
   }
-  if (!blockedX) player.x = newX;
+  if (!blockedX) {
+    player.x = Math.max(0, Math.min(newX, WORLD_PIXEL_WIDTH - player.width));
+  }
 
   // vertical movement + collision
   let newY = player.y + player.vy;
@@ -312,6 +375,14 @@ function update() {
     player.vy = 0;
   }
 
+  if (player.y > WORLD_PIXEL_HEIGHT) {
+    placePlayerAtSpawn();
+    player.vx = 0;
+    player.vy = 0;
+    player.jumping = false;
+    setStatus("Respawned at the farm");
+  }
+
   // crops & animals
   updateCrops();
   updateAnimals();
@@ -322,16 +393,9 @@ function update() {
 
 // ===== Drawing =====
 function drawBlock(x, y, block) {
-  switch (block) {
-    case BLOCK_GRASS:    ctx.fillStyle = "#228B22"; break;
-    case BLOCK_DIRT:     ctx.fillStyle = "#8B4513"; break;
-    case BLOCK_STONE:    ctx.fillStyle = "#7f7f7f"; break;
-    case BLOCK_WOOD:     ctx.fillStyle = "#A0522D"; break;
-    case BLOCK_LEAVES:   ctx.fillStyle = "#4CAF50"; break;
-    case BLOCK_WATER:    ctx.fillStyle = "#1E90FF"; break;
-    case BLOCK_FARMLAND: ctx.fillStyle = "#5A3C1A"; break;
-    default: return;
-  }
+  const blockDef = BLOCK_DEFS[block];
+  if (!blockDef) return;
+  ctx.fillStyle = blockDef.color;
 
   const screenX = x * TILE_SIZE - cameraX;
   const screenY = y * TILE_SIZE - cameraY;
@@ -361,20 +425,21 @@ function drawHotbar() {
     ctx.strokeRect(slotX, slotY, 32, 32);
 
     const block = PLACEABLE_BLOCKS[i];
-    let color = "#ffffff";
-    if (block === BLOCK_GRASS)    color = "#228B22";
-    if (block === BLOCK_DIRT)     color = "#8B4513";
-    if (block === BLOCK_STONE)    color = "#7f7f7f";
-    if (block === BLOCK_WOOD)     color = "#A0522D";
-    if (block === BLOCK_FARMLAND) color = "#5A3C1A";
-
-    ctx.fillStyle = color;
+    ctx.fillStyle = BLOCK_DEFS[block].color;
     ctx.fillRect(slotX + 4, slotY + 4, 24, 24);
 
     ctx.fillStyle = "white";
     ctx.font = "12px Arial";
     ctx.fillText((i + 1).toString(), slotX + 12, slotY + 30);
   }
+
+  ctx.fillStyle = "white";
+  ctx.font = "13px Arial";
+  ctx.fillText(
+    `Selected: ${getBlockName(PLACEABLE_BLOCKS[selectedBlockIndex])}`,
+    xStart - 10,
+    yStart - 18
+  );
 }
 
 function drawCrops() {
@@ -438,6 +503,30 @@ function drawDayNightOverlay() {
   ctx.font = "14px Arial";
   const label = darkness > 0.5 ? "Night" : "Day";
   ctx.fillText(`Time: ${label}`, 10, 20);
+  ctx.fillText(`Wheat: ${wheat}`, 10, 40);
+
+  if (statusTimer > 0 && statusMessage) {
+    const width = Math.min(540, statusMessage.length * 7 + 20);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.fillRect(10, 50, width, 26);
+    ctx.fillStyle = "white";
+    ctx.fillText(statusMessage, 20, 68);
+  }
+}
+
+function drawTargetTile() {
+  if (!inWorldBounds(mouseTile.x, mouseTile.y)) return;
+
+  const screenX = mouseTile.x * TILE_SIZE - cameraX;
+  const screenY = mouseTile.y * TILE_SIZE - cameraY;
+  if (screenX + TILE_SIZE < 0 || screenX > WIDTH) return;
+  if (screenY + TILE_SIZE < 0 || screenY > HEIGHT) return;
+
+  ctx.strokeStyle = isWithinReach(mouseTile.x, mouseTile.y)
+    ? "rgba(255, 255, 255, 0.9)"
+    : "rgba(255, 80, 80, 0.85)";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2);
 }
 
 // Draw player as a "chicken"
@@ -496,6 +585,7 @@ function draw() {
   drawChicken();
 
   // UI overlays
+  drawTargetTile();
   drawHotbar();
   drawDayNightOverlay();
 }
@@ -519,16 +609,39 @@ function isOverlappingPlayer(tileX, tileY) {
 }
 
 function breakBlock(tileX, tileY) {
-  if (tileX < 0 || tileY < 0 || tileX >= WORLD_WIDTH || tileY >= WORLD_HEIGHT) return;
+  if (!inWorldBounds(tileX, tileY)) return;
+  if (!isWithinReach(tileX, tileY)) {
+    setStatus("Too far away");
+    return;
+  }
   if (world[tileY][tileX] === BLOCK_AIR) return;
   if (isOverlappingPlayer(tileX, tileY)) return;
 
+  const block = world[tileY][tileX];
+  if (block === BLOCK_FARMLAND && cropTimers[tileY][tileX] > 0) {
+    const stage = getCropStage(cropTimers[tileY][tileX]);
+    if (stage >= 4) {
+      wheat++;
+      cropTimers[tileY][tileX] = 1;
+      setStatus("Harvested wheat and replanted");
+      return;
+    }
+    cropTimers[tileY][tileX] = 0;
+    setStatus("Removed young crop");
+    return;
+  }
+
   world[tileY][tileX] = BLOCK_AIR;
   cropTimers[tileY][tileX] = 0;
+  setStatus(`Broke ${getBlockName(block)}`);
 }
 
 function placeBlock(tileX, tileY) {
-  if (tileX < 0 || tileY < 0 || tileX >= WORLD_WIDTH || tileY >= WORLD_HEIGHT) return;
+  if (!inWorldBounds(tileX, tileY)) return;
+  if (!isWithinReach(tileX, tileY)) {
+    setStatus("Too far away");
+    return;
+  }
   if (world[tileY][tileX] !== BLOCK_AIR) return;
   if (isOverlappingPlayer(tileX, tileY)) return;
 
@@ -537,19 +650,35 @@ function placeBlock(tileX, tileY) {
 
   // start crop growth if farmland
   cropTimers[tileY][tileX] = (blockToPlace === BLOCK_FARMLAND) ? 1 : 0;
+  setStatus(`Placed ${getBlockName(blockToPlace)}`);
 }
 
-// Mouse → block coordinates use camera
-canvas.addEventListener("mousedown", (e) => {
+// Mouse -> block coordinates use camera
+function updateMouseTile(e) {
   const rect = canvas.getBoundingClientRect();
-  const mouseX = e.clientX - rect.left;
-  const mouseY = e.clientY - rect.top;
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mouseX = (e.clientX - rect.left) * scaleX;
+  const mouseY = (e.clientY - rect.top) * scaleY;
 
   const worldX = mouseX + cameraX;
   const worldY = mouseY + cameraY;
 
-  const tileX = Math.floor(worldX / TILE_SIZE);
-  const tileY = Math.floor(worldY / TILE_SIZE);
+  mouseTile = {
+    x: Math.floor(worldX / TILE_SIZE),
+    y: Math.floor(worldY / TILE_SIZE)
+  };
+}
+
+canvas.addEventListener("mousemove", updateMouseTile);
+canvas.addEventListener("mouseleave", () => {
+  mouseTile = { x: -1, y: -1 };
+});
+
+canvas.addEventListener("mousedown", (e) => {
+  updateMouseTile(e);
+  const tileX = mouseTile.x;
+  const tileY = mouseTile.y;
 
   if (e.button === 0) {
     placeBlock(tileX, tileY);
