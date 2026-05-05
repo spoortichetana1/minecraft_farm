@@ -1,4 +1,6 @@
-# Minecraft Farm
+# Minecraft – Walk in the Park
+
+TRY GAME HERE --> https://spoortichetana1.github.io/minecraft_farm/
 
 A tiny 2D block-based browser game inspired by Minecraft. You play as a chicken, explore a procedurally generated side-scrolling world, place and break blocks, grow crops, and harvest wheat.
 
@@ -39,15 +41,50 @@ Then open `http://localhost:8000`.
 
 Useful constants in `game.js`:
 
-- `WORLD_WIDTH`, `WORLD_HEIGHT`, `TILE_SIZE`
-- `DAY_SPEED`
-- `PLACEABLE_BLOCKS`
-- `INTERACTION_RANGE`
+- `WORLD_WIDTH`, `WORLD_HEIGHT` — world tile grid size
+- `TILE_SIZE` — size in pixels of each tile (default 16)
+- `DAY_SPEED` — increase for faster day/night cycle
+- Block types: defined constants (e.g., `BLOCK_GRASS`, `BLOCK_DIRT`, `BLOCK_WOOD`, `BLOCK_FARMLAND`)
+- `generateWorld()` — main world generation (height map, stone depth, trees, water)
+- `update()`, `draw()` — main game loop functions and rendering
 
-## Improvement Ideas
+To add blocks, edit `PLACEABLE_BLOCKS` and add a corresponding drawing/color in `drawBlock()` and behavior where needed.
 
-- Add persistent save/load.
-- Add textured sprites or a small asset pipeline.
-- Add inventory counts for placed blocks.
-- Add sound effects and music.
-- Split `game.js` into modules once the game grows beyond a prototype.
+---
+
+## 🛠️ Development Notes
+
+- The physics are basic; collisions are tile-based (solid / not solid). Consider improving edge cases and adding smoother movement/animations.
+- No persistent save/load — world state resets on reload.
+- The UI is intentionally minimalistic; improvements like textures, better HUD, or sound are left as future work.
+- For performance with large worlds, consider chunking and drawing only visible tiles (the current code already calculates visible tile range by camera bounds).
+
+---
+
+## ✅ Contribution
+
+Contributions are welcome! If you'd like to add features or fixes, please do the following:
+
+1. Fork the repository
+2. Create a new branch for your feature or fix
+3. Send a PR explaining the change
+
+Suggested improvements:
+- Add textures or sprite assets
+- Implement saving/loading of worlds
+- Add UI for inventory and block stacking
+- Add sound effects and background music
+
+---
+
+## 📄 License
+
+This project is provided as-is (no explicit license file included in this repo). If you’d like an open-source license, add a `LICENSE` file (MIT is a common choice) or update the README to reflect your preferred license.
+
+---
+
+## Contact
+
+Author: `spoortichetana1` (GitHub)
+
+Have fun exploring and expanding the world! 🐔🌲🌾
