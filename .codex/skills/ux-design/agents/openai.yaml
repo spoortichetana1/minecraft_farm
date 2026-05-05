@@ -1,0 +1,7 @@
+interface:
+  display_name: "UX Design"
+  short_description: "Improve product UX and workflows"
+  default_prompt: "Use $ux-design to design or improve this user workflow."
+
+policy:
+  allow_implicit_invocation: true

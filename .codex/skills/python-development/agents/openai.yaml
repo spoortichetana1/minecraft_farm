@@ -1,0 +1,7 @@
+interface:
+  display_name: "Python Development"
+  short_description: "Build and improve Python applications"
+  default_prompt: "Use $python-development to implement, refactor, test, or debug Python code."
+
+policy:
+  allow_implicit_invocation: true

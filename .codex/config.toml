@@ -1,0 +1,51 @@
+[codex]
+mode = "generic"
+project_discovery = true
+prefer_existing_conventions = true
+preserve_unrelated_changes = true
+minimal_edits = true
+update_docs_when_behavior_changes = true
+
+[skills]
+enabled = true
+path = ".codex/skills"
+auto_discover = true
+allow_implicit_invocation = true
+disable_all_when_needed = false
+
+[skills.available]
+frontend_development = true
+python_development = true
+code_review = true
+ux_design = true
+
+[verification]
+discover_commands_from_repo = true
+prefer_existing_scripts = true
+run_relevant_tests = true
+run_build_when_available = true
+run_lint_or_typecheck_when_available = true
+state_unavailable_checks = true
+
+[security]
+avoid_committing_secrets = true
+avoid_private_data_in_logs = true
+require_confirmation_for_destructive_actions = true
+sanitize_untrusted_inputs = true
+
+[agentic_applications]
+enabled_when_detected = true
+treat_prompts_as_code = true
+validate_model_outputs = true
+treat_tool_outputs_as_untrusted = true
+require_confirmation_for_external_side_effects = true
+test_tool_failure_paths = true
+consider_prompt_injection = true
+protect_sensitive_trace_data = true
+
+[handoff]
+summarize_changes = true
+list_files_touched = true
+report_checks = true
+report_assumptions = true
+report_followups = true

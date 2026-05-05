@@ -1,0 +1,7 @@
+interface:
+  display_name: "Frontend Development"
+  short_description: "Build and improve frontend applications"
+  default_prompt: "Use $frontend-development to implement or improve a frontend user flow."
+
+policy:
+  allow_implicit_invocation: true
