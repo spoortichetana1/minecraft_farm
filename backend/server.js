@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const PORT = Number(process.env.PORT) || 3000;
-const PUBLIC_ROOT = path.resolve(__dirname, "..");
+const PUBLIC_ROOT = path.resolve(__dirname, "..", "frontend");
 const gameState = {
   inventory: {
     wheat: 0,
@@ -87,8 +87,7 @@ function handleApi(request, requestPath, response) {
     sendJson(response, 200, {
       name: "FarmCraft",
       versions: {
-        twoD: "/",
-        threeD: "/3d-version/index.html"
+        main: "/"
       }
     });
     return true;
@@ -114,6 +113,12 @@ function handleApi(request, requestPath, response) {
 const server = http.createServer((request, response) => {
   const requestUrl = new URL(request.url, `http://${request.headers.host}`);
   const requestPath = decodeURIComponent(requestUrl.pathname);
+
+  if (requestPath === "/3d-version" || requestPath === "/3d-version/index.html") {
+    response.writeHead(301, { Location: "/" });
+    response.end();
+    return;
+  }
 
   if (handleApi(request, requestPath, response)) {
     return;

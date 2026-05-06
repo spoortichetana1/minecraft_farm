@@ -1,115 +1,72 @@
-# Minecraft – Walk in the Park
+# FarmCraft 3D
 
-TRY GAME HERE --> https://spoortichetana1.github.io/minecraft_farm/
-
-A tiny 2D block-based browser game inspired by Minecraft. You play as a chicken, explore a procedurally generated side-scrolling world, place and break blocks, grow crops, and harvest wheat.
+A browser-based 3D farming world built with Three.js. The old 2D canvas version has been removed; the 3D version is now the main app.
 
 ## Features
 
-- Procedural terrain with hills, dirt, stone, ponds, and trees.
-- Player movement with tile collision, jumping, and camera follow.
-- Reach-limited block placing and breaking.
-- Hotbar block selection for grass, dirt, stone, wood, and farmland.
-- Crop growth on farmland, with harvest and auto-replant behavior.
-- Simple wandering animals that avoid walls and ledges.
-- Day/night overlay, target tile highlight, status messages, and wheat counter.
+- Hilly green terrain with vertex color variation.
+- Minecraft-style grass and dirt block patch.
+- Third-person stickman player.
+- WASD player movement with mouse-look camera follow.
+- Health, respawn, and inventory state.
+- Tree resources that can be chopped for wood.
+- Day/night lighting cycle.
+- Night-only shadow monsters that chase and damage the player.
+- Moving animals with simple wandering behavior.
+- Wildflowers scattered across the terrain.
+- Ambient light, sun light, and shadows.
+- Small JavaScript backend for serving the app and health/info endpoints.
 
 ## Controls
 
-- Move: `A` / `D` or arrow keys
-- Jump: `Space` or `ArrowUp`
-- Select block: `1` through `5`
-- Place block: left mouse button
-- Break block or harvest crop: right mouse button
-
-The highlighted target tile is white when it is within reach and red when it is too far away.
+- Click the screen to capture the mouse.
+- Move: `W`, `A`, `S`, `D`
+- Look around: mouse movement
+- Interact / attack: left mouse click
 
 ## Run
 
-Open `index.html` directly in a modern browser, or serve the folder locally:
-
-```powershell
-python -m http.server 8000
-```
-
-Then open `http://localhost:8000`.
-
-You can also run the JavaScript backend server:
+Use the JavaScript backend:
 
 ```powershell
 npm start
 ```
 
-Then open `http://localhost:3000`.
+Then open:
+
+```text
+http://localhost:3000
+```
+
+You can also serve the `frontend/` folder with any static server. Because the app uses JavaScript modules and a CDN import for Three.js, use `http://` instead of opening `frontend/index.html` directly from `file://`.
 
 ## Code Layout
 
-- `index.html` hosts the canvas and loads the frontend files.
-- `styles.css` contains page and canvas styling.
-- `js/config.js` defines shared constants, block ids, and block metadata.
-- `js/api.js` loads and saves inventory through the backend REST API.
-- `js/world.js` contains terrain generation and world/block helpers.
-- `js/state.js` creates the runtime game state and status helpers.
-- `js/entities.js` updates player, crops, animals, camera, and time.
-- `js/interactions.js` handles placing, breaking, harvesting, and reach checks.
-- `js/input.js` wires keyboard and mouse controls.
-- `js/render.js` draws the world, entities, crops, overlays, and hotbar.
-- `js/main.js` starts the game loop.
-- `backend/server.js` serves the static game files and exposes small API endpoints.
+- `frontend/index.html` loads the 3D app.
+- `frontend/main.js` bootstraps the app and starts the render loop.
+- `frontend/rendering/` creates the Three.js scene, renderer, camera, and lighting.
+- `frontend/world/` owns terrain height, block patches, trees, rocks, and resource collection.
+- `frontend/player/` owns the stickman, movement, health, damage, and respawn.
+- `frontend/entities/` owns animals and night monsters.
+- `frontend/systems/` owns input, inventory, time, and loop-level systems.
+- `frontend/ui/` owns HUD updates and player feedback.
+- `frontend/styles.css` contains fullscreen page and HUD styling.
+- `backend/server.js` serves files from `frontend/` and exposes small REST endpoints.
+- `design/game-design.md` keeps the project design notes.
 
-REST endpoints:
+## Backend API
 
 - `GET /api/health` checks backend status.
-- `GET /api/game-info` returns game route info.
-- `GET /api/game-state` returns saved inventory state.
-- `POST /api/game-state` saves inventory state with JSON like `{ "inventory": { "wheat": 0, "eggs": 0 } }`.
+- `GET /api/game-info` returns app route info.
+- `GET /api/game-state` returns the current in-memory game state.
+- `POST /api/game-state` updates the current in-memory game state.
 
-Useful constants in `js/config.js`:
+The REST state API is intentionally not used by the current gameplay loop yet; it remains available for a future save system.
 
-- `WORLD_WIDTH`, `WORLD_HEIGHT` — world tile grid size
-- `TILE_SIZE` — size in pixels of each tile (default 16)
-- `DAY_SPEED` — increase for faster day/night cycle
-- Block types: defined constants (e.g., `BLOCK_GRASS`, `BLOCK_DIRT`, `BLOCK_WOOD`, `BLOCK_FARMLAND`)
-- `FarmCraft.World.generateWorld()` — main world generation (height map, stone depth, trees, water)
-- `FarmCraft.Entities.update()`, `FarmCraft.Render.draw()` — main update and rendering functions
+## Development Notes
 
-To add blocks, edit `PLACEABLE_BLOCKS` and `BLOCK_DEFS` in `js/config.js`, then add behavior where needed.
-
----
-
-## 🛠️ Development Notes
-
-- The physics are basic; collisions are tile-based (solid / not solid). Consider improving edge cases and adding smoother movement/animations.
-- No persistent save/load — world state resets on reload.
-- The UI is intentionally minimalistic; improvements like textures, better HUD, or sound are left as future work.
-- For performance with large worlds, consider chunking and drawing only visible tiles (the current code already calculates visible tile range by camera bounds).
-
----
-
-## ✅ Contribution
-
-Contributions are welcome! If you'd like to add features or fixes, please do the following:
-
-1. Fork the repository
-2. Create a new branch for your feature or fix
-3. Send a PR explaining the change
-
-Suggested improvements:
-- Add textures or sprite assets
-- Implement saving/loading of worlds
-- Add UI for inventory and block stacking
-- Add sound effects and background music
-
----
-
-## 📄 License
-
-This project is provided as-is (no explicit license file included in this repo). If you’d like an open-source license, add a `LICENSE` file (MIT is a common choice) or update the README to reflect your preferred license.
-
----
-
-## Contact
-
-Author: `spoortichetana1` (GitHub)
-
-Have fun exploring and expanding the world! 🐔🌲🌾
+- The app has no build step and no npm runtime dependencies.
+- Three.js is loaded from a CDN in `main.js`.
+- The backend state is in memory and resets when the server restarts.
+- Movement currently has no collision or physics.
+- Farming crops are intentionally deferred until wood, inventory, day/night, monsters, and health are stable.
