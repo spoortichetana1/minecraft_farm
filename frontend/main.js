@@ -1,25 +1,73 @@
-import { createLighting, createRenderingContext } from "./rendering/scene.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { createAnimals } from "./entities/animals.js";
 import { createMonsterSystem } from "./entities/monsters.js";
 import { createPlayer } from "./player/player.js";
-import { createInput } from "./systems/input.js";
+import { updateFollowCamera } from "./player/camera.js";
+import { createInput, updatePlayerMovement } from "./player/movement.js";
+import { createDayNightSystem } from "./systems/daynight.js";
 import { createInventory } from "./systems/inventory.js";
-import { createTimeSystem } from "./systems/time.js";
 import { createHud } from "./ui/hud.js";
+import { createHotbar } from "./ui/hotbar.js";
+import { createLighting } from "./systems/lighting.js";
+import { createSaveSystem } from "./systems/save.js";
+import { createBuildingSystem } from "./world/building.js";
+import { createFarmingSystem } from "./world/farming.js";
 import { createBlockPatch, createTerrain } from "./world/terrain.js";
-import { interactWithResources, spawnTrees } from "./world/resources.js";
+import { interactWithVegetation } from "./world/vegetation.js";
+
+function createRenderingContext() {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x87ceeb);
+
+  const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+  camera.position.set(0, 5, 8);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  document.body.appendChild(renderer.domElement);
+
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+
+  return {
+    scene,
+    camera,
+    renderer,
+    clock: new THREE.Clock()
+  };
+}
 
 const { scene, camera, renderer, clock } = createRenderingContext();
 const lights = createLighting(scene);
 const terrain = createTerrain(scene);
 const inventory = createInventory();
-const time = createTimeSystem();
+const dayNight = createDayNightSystem();
 const hud = createHud();
+const hotbar = createHotbar();
 const input = createInput(renderer.domElement);
 const player = createPlayer(scene, terrain);
 const animals = createAnimals(scene, terrain, 12);
 const monsters = createMonsterSystem(scene, terrain);
-const resources = spawnTrees(scene, terrain, 24);
+const farming = createFarmingSystem(scene, terrain);
+const building = createBuildingSystem(scene, terrain, farming);
+const saveSystem = createSaveSystem({
+  player,
+  terrain,
+  inventory,
+  building,
+  farming,
+  hud
+});
 
 createBlockPatch(scene, terrain);
 
@@ -28,25 +76,40 @@ const context = {
   player,
   terrain,
   inventory,
-  time,
+  dayNight,
   hud
 };
 
+document.getElementById("load-game")?.addEventListener("click", () => {
+  saveSystem.loadGame();
+});
+
 input.setPrimaryAction(() => {
-  if (interactWithResources(resources, player, inventory, hud)) return;
+  if (building.remove(camera, hud)) return;
+  if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
+  if (farming.interact(camera, inventory, hud)) return;
   monsters.attackNearest(player, hud);
+});
+
+input.setSecondaryAction(() => {
+  building.place(camera, player, hotbar, hud);
 });
 
 function animate() {
   requestAnimationFrame(animate);
 
   const deltaTime = Math.min(clock.getDelta(), 0.05);
+  const movementState = updatePlayerMovement(player, input, terrain, deltaTime);
 
-  time.update(deltaTime, { lights });
-  player.update(deltaTime, { camera, input, terrain });
+  terrain.update(player.mesh.position);
+  dayNight.update(deltaTime, lights);
+  updateFollowCamera(camera, player, input, movementState);
+  farming.update(deltaTime);
+  saveSystem.update(deltaTime);
   animals.update(deltaTime, context);
   monsters.update(deltaTime, context);
   hud.update(deltaTime, context);
+  hotbar.update();
 
   renderer.render(scene, camera);
 }

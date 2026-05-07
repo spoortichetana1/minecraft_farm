@@ -1,4 +1,17 @@
-import { THREE } from "../rendering/scene.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { randomRange } from "../utils/math.js";
+
+const MAX_MONSTERS = 5;
+const SPAWN_INTERVAL_SECONDS = 4;
+const SPAWN_DISTANCE_FROM_PLAYER = 10;
+const DETECTION_RANGE = 18;
+const TOUCH_DAMAGE = 10;
+const TOUCH_RANGE = 1.1;
+
+function markShadow(mesh) {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+}
 
 function createShadowMonster(scene) {
   const monster = new THREE.Group();
@@ -10,21 +23,44 @@ function createShadowMonster(scene) {
 
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1, 0.45), material);
   body.position.y = 0.55;
-  body.castShadow = true;
-  body.receiveShadow = true;
+  markShadow(body);
   monster.add(body);
 
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), material);
-  head.position.y = 1.2;
-  head.castShadow = true;
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), material);
+  head.position.y = 1.3;
+  markShadow(head);
   monster.add(head);
+
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.75, 0.16), material);
+  leftArm.position.set(-0.52, 0.58, 0);
+  leftArm.rotation.z = 0.18;
+  markShadow(leftArm);
+  monster.add(leftArm);
+
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.75, 0.16), material);
+  rightArm.position.set(0.52, 0.58, 0);
+  rightArm.rotation.z = -0.18;
+  markShadow(rightArm);
+  monster.add(rightArm);
+
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.18), material);
+  leftLeg.position.set(-0.22, -0.25, 0);
+  markShadow(leftLeg);
+  monster.add(leftLeg);
+
+  const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.65, 0.18), material);
+  rightLeg.position.set(0.22, -0.25, 0);
+  markShadow(rightLeg);
+  monster.add(rightLeg);
 
   scene.add(monster);
   return monster;
 }
 
 function removeMonster(monster) {
-  if (monster.mesh.parent) monster.mesh.parent.remove(monster.mesh);
+  if (monster.mesh.parent) {
+    monster.mesh.parent.remove(monster.mesh);
+  }
 }
 
 export function createMonsterSystem(scene, terrain) {
@@ -36,10 +72,10 @@ export function createMonsterSystem(scene, terrain) {
     let z = 0;
 
     for (let attempts = 0; attempts < 20; attempts++) {
-      x = Math.random() * 42 - 21;
-      z = Math.random() * 42 - 21;
+      x = randomRange(-21, 21);
+      z = randomRange(-21, 21);
 
-      if (player.mesh.position.distanceTo(new THREE.Vector3(x, player.mesh.position.y, z)) > 10) {
+      if (player.mesh.position.distanceTo(new THREE.Vector3(x, player.mesh.position.y, z)) > SPAWN_DISTANCE_FROM_PLAYER) {
         break;
       }
     }
@@ -55,22 +91,24 @@ export function createMonsterSystem(scene, terrain) {
   }
 
   function clearMonsters() {
-    for (const monster of monsters) removeMonster(monster);
+    for (const monster of monsters) {
+      removeMonster(monster);
+    }
     monsters.length = 0;
   }
 
   return {
     update(deltaTime, context) {
-      if (!context.time.isNight()) {
+      if (!context.dayNight.isNight) {
         clearMonsters();
         spawnTimer = 2;
         return;
       }
 
       spawnTimer -= deltaTime;
-      if (spawnTimer <= 0 && monsters.length < 5) {
+      if (spawnTimer <= 0 && monsters.length < MAX_MONSTERS) {
         spawnMonster(context.player);
-        spawnTimer = 4;
+        spawnTimer = SPAWN_INTERVAL_SECONDS;
       }
 
       for (let i = monsters.length - 1; i >= 0; i--) {
@@ -85,7 +123,7 @@ export function createMonsterSystem(scene, terrain) {
         const toPlayer = context.player.mesh.position.clone().sub(monster.mesh.position);
         const distance = toPlayer.length();
 
-        if (distance < 18) {
+        if (distance < DETECTION_RANGE) {
           toPlayer.y = 0;
           toPlayer.normalize();
           monster.mesh.position.addScaledVector(toPlayer, monster.speed * deltaTime);
@@ -96,8 +134,14 @@ export function createMonsterSystem(scene, terrain) {
         monster.mesh.position.z = terrain.clamp(monster.mesh.position.z);
         monster.mesh.position.y = terrain.getHeight(monster.mesh.position.x, monster.mesh.position.z) + 0.05;
 
-        if (distance < 1.1 && context.player.damage(10)) {
-          context.hud?.setStatus("Shadow hit you");
+        if (distance < TOUCH_RANGE) {
+          const damageResult = context.player.damage(TOUCH_DAMAGE);
+
+          if (damageResult.died) {
+            context.hud.setStatus("You Died", 3);
+          } else if (damageResult.applied) {
+            context.hud.setStatus("Shadow hit you");
+          }
         }
       }
     },

@@ -1,4 +1,5 @@
-import { THREE } from "../rendering/scene.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { createHealth } from "../systems/health.js";
 
 const PLAYER_SPAWN = new THREE.Vector3(0, 0, 7);
 
@@ -49,67 +50,37 @@ function createStickmanMesh() {
 
 export function createPlayer(scene, terrain) {
   const mesh = createStickmanMesh();
-  const state = {
+  const health = createHealth(100);
+
+  function respawn() {
+    health.reset();
+    mesh.position.set(
+      PLAYER_SPAWN.x,
+      terrain.getHeight(PLAYER_SPAWN.x, PLAYER_SPAWN.z) + 0.05,
+      PLAYER_SPAWN.z
+    );
+  }
+
+  respawn();
+  scene.add(mesh);
+
+  return {
     mesh,
-    maxHealth: 100,
-    health: 100,
-    damageCooldown: 0,
+    health,
     speed: 6,
+    respawn,
     damage(amount) {
-      if (state.damageCooldown > 0) return false;
+      const applied = health.damage(amount);
+      const died = applied && health.currentHealth <= 0;
 
-      state.health = Math.max(0, state.health - amount);
-      state.damageCooldown = 0.8;
-
-      if (state.health <= 0) {
-        state.respawn();
+      if (died) {
+        respawn();
       }
 
-      return true;
-    },
-    respawn() {
-      state.health = state.maxHealth;
-      mesh.position.set(
-        PLAYER_SPAWN.x,
-        terrain.getHeight(PLAYER_SPAWN.x, PLAYER_SPAWN.z) + 0.05,
-        PLAYER_SPAWN.z
-      );
-    },
-    update(deltaTime, context) {
-      state.damageCooldown = Math.max(0, state.damageCooldown - deltaTime);
-
-      const { camera, input } = context;
-      const direction = input.getCameraDirection();
-      const forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
-      const left = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-      const moveDirection = new THREE.Vector3();
-
-      if (input.keys.KeyW) moveDirection.add(forward);
-      if (input.keys.KeyS) moveDirection.addScaledVector(forward, -1);
-      if (input.keys.KeyA) moveDirection.add(left);
-      if (input.keys.KeyD) moveDirection.addScaledVector(left, -1);
-
-      if (moveDirection.lengthSq() > 0) {
-        moveDirection.normalize();
-        mesh.position.addScaledVector(moveDirection, state.speed * deltaTime);
-        mesh.rotation.y = Math.atan2(moveDirection.x, moveDirection.z);
-      }
-
-      mesh.position.x = terrain.clamp(mesh.position.x);
-      mesh.position.z = terrain.clamp(mesh.position.z);
-      mesh.position.y = terrain.getHeight(mesh.position.x, mesh.position.z) + 0.05;
-
-      const cameraTarget = mesh.position.clone().add(new THREE.Vector3(0, 1.15, 0));
-      const followPosition = mesh.position.clone()
-        .addScaledVector(forward, -5)
-        .add(new THREE.Vector3(0, 2.8 + input.pitch, 0));
-
-      camera.position.lerp(followPosition, 0.12);
-      camera.lookAt(cameraTarget);
+      return {
+        applied,
+        died
+      };
     }
   };
-
-  state.respawn();
-  scene.add(mesh);
-  return state;
 }

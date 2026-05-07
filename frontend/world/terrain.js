@@ -1,30 +1,42 @@
-import { THREE } from "../rendering/scene.js";
-
-export const WORLD_LIMIT = 24;
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { clamp } from "../utils/math.js";
+import {
+  CHUNK_SEGMENTS,
+  CHUNK_SIZE,
+  LOAD_RADIUS,
+  UNLOAD_RADIUS,
+  createChunkRandom,
+  getChunkCoord,
+  getChunkKey
+} from "./chunks.js";
+import { createChunkVegetation } from "./vegetation.js";
 
 export function getTerrainHeight(x, z) {
   return Math.sin(x * 0.2) + Math.cos(z * 0.2);
 }
 
 export function clampToWorld(value) {
-  return Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, value));
+  return value;
 }
 
-export function createTerrain(scene) {
-  const geometry = new THREE.PlaneGeometry(50, 50, 100, 100);
+function createTerrainChunkMesh(chunkX, chunkZ) {
+  const geometry = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE, CHUNK_SEGMENTS, CHUNK_SEGMENTS);
   geometry.rotateX(-Math.PI / 2);
 
   const positions = geometry.attributes.position;
   const colors = [];
   const grass = new THREE.Color(0x2f9e44);
   const darkGrass = new THREE.Color(0x1f6f35);
+  const centerX = chunkX * CHUNK_SIZE + CHUNK_SIZE / 2;
+  const centerZ = chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2;
+  const random = createChunkRandom(chunkX, chunkZ, 17);
 
   for (let i = 0; i < positions.count; i++) {
-    const x = positions.getX(i);
-    const z = positions.getZ(i);
+    const x = positions.getX(i) + centerX;
+    const z = positions.getZ(i) + centerZ;
     const height = getTerrainHeight(x, z);
-    const colorNoise = (Math.random() - 0.5) * 0.25;
-    const colorMix = Math.max(0, Math.min(1, (height + 2) / 4 + colorNoise));
+    const colorNoise = (random() - 0.5) * 0.25;
+    const colorMix = clamp((height + 2) / 4 + colorNoise, 0, 1);
     const color = darkGrass.clone().lerp(grass, colorMix);
 
     positions.setY(i, height);
@@ -40,15 +52,92 @@ export function createTerrain(scene) {
     roughness: 0.9
   });
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(centerX, 0, centerZ);
   mesh.receiveShadow = true;
-  scene.add(mesh);
+  mesh.userData.chunk = { x: chunkX, z: chunkZ };
+  return mesh;
+}
 
-  return {
-    mesh,
+export function createTerrain(scene) {
+  const chunks = new Map();
+  const removedResourceIds = new Set();
+
+  function loadChunk(chunkX, chunkZ) {
+    const key = getChunkKey(chunkX, chunkZ);
+    if (chunks.has(key)) return;
+
+    const mesh = createTerrainChunkMesh(chunkX, chunkZ);
+    scene.add(mesh);
+
+    const vegetation = createChunkVegetation(
+      scene,
+      terrain,
+      chunkX,
+      chunkZ,
+      createChunkRandom(chunkX, chunkZ, 41),
+      removedResourceIds
+    );
+
+    chunks.set(key, {
+      key,
+      x: chunkX,
+      z: chunkZ,
+      mesh,
+      vegetation
+    });
+  }
+
+  function unloadChunk(key) {
+    const chunk = chunks.get(key);
+    if (!chunk) return;
+
+    scene.remove(chunk.mesh);
+    chunk.mesh.geometry.dispose();
+    chunk.mesh.material.dispose();
+
+    scene.remove(chunk.vegetation.group);
+    chunks.delete(key);
+  }
+
+  function updateChunks(playerPosition) {
+    const playerChunkX = getChunkCoord(playerPosition.x);
+    const playerChunkZ = getChunkCoord(playerPosition.z);
+    const needed = new Set();
+
+    for (let x = playerChunkX - LOAD_RADIUS; x <= playerChunkX + LOAD_RADIUS; x++) {
+      for (let z = playerChunkZ - LOAD_RADIUS; z <= playerChunkZ + LOAD_RADIUS; z++) {
+        needed.add(getChunkKey(x, z));
+        loadChunk(x, z);
+      }
+    }
+
+    for (const [key, chunk] of chunks) {
+      const distance = Math.max(Math.abs(chunk.x - playerChunkX), Math.abs(chunk.z - playerChunkZ));
+      if (distance > UNLOAD_RADIUS) {
+        unloadChunk(key);
+      }
+    }
+  }
+
+  const terrain = {
     getHeight: getTerrainHeight,
-    limit: WORLD_LIMIT,
-    clamp: clampToWorld
+    clamp: clampToWorld,
+    limit: Infinity,
+    removedResourceIds,
+    update: updateChunks,
+    getMeshes() {
+      return [...chunks.values()].map((chunk) => chunk.mesh);
+    },
+    getTreeResources() {
+      const resources = Array.from(chunks.values()).flatMap((chunk) => chunk.vegetation.resources);
+      resources.removedResourceIds = removedResourceIds;
+      return resources;
+    }
   };
+
+  terrain.update(new THREE.Vector3(0, 0, 0));
+
+  return terrain;
 }
 
 function createBlock(scene, terrain, x, z, color) {

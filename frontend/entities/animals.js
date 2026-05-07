@@ -1,4 +1,5 @@
-import { THREE } from "../rendering/scene.js";
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+import { randomChoice, randomRange } from "../utils/math.js";
 
 function createAnimal(scene, color) {
   const animal = new THREE.Group();
@@ -30,9 +31,9 @@ export function createAnimals(scene, terrain, count) {
   const animals = [];
 
   for (let i = 0; i < count; i++) {
-    const x = Math.random() * 36 - 18;
-    const z = Math.random() * 36 - 18;
-    const mesh = createAnimal(scene, colors[Math.floor(Math.random() * colors.length)]);
+    const x = randomRange(-18, 18);
+    const z = randomRange(-18, 18);
+    const mesh = createAnimal(scene, randomChoice(colors));
 
     mesh.position.set(x, terrain.getHeight(x, z) + 0.25, z);
     animals.push({
