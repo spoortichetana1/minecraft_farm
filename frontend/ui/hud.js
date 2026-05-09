@@ -1,4 +1,4 @@
-import { INVENTORY_LABELS, INVENTORY_TYPES } from "../systems/inventory.js";
+import { INVENTORY_LABELS, INVENTORY_TYPES } from "/game/systems/inventory.js";
 
 export function createHud() {
   const health = document.getElementById("hud-health");

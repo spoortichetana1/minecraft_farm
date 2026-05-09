@@ -6,6 +6,8 @@ Universal guidance for Codex or other AI coding agents working in an application
 
 Discover the project from the repository before acting. Do not assume the language, framework, package manager, architecture, deployment target, or test strategy until they are confirmed from files, scripts, documentation, or user instructions.
 
+Read `.codex/instructions.md` before every prompt or task, then apply any repository-specific guidance from that file.
+
 ## Local Skills
 
 This repository may include reusable skills under `.codex/skills/`. Use them when the task matches their descriptions:
@@ -19,6 +21,7 @@ If the local Codex environment does not auto-discover repo-local skills, read th
 
 ## How To Work
 
+- Always plan and execute for every prompt or task: identify the intended change, inspect the relevant files, carry out the work, and verify it with the best available local checks.
 - Read the relevant source, docs, configuration, and tests before editing.
 - Prefer the repository's existing patterns over introducing new ones.
 - Keep changes focused, small, and reviewable.

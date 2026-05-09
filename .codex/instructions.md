@@ -38,6 +38,10 @@ Prefer explicit repository evidence over guesses.
 
 ## Frontend Guidance
 
+- In this repository, keep the frontend limited to presentation and browser-facing composition:
+  `frontend/index.html`, `frontend/styles.css`, `frontend/main.js`, `frontend/ui/`, and static visual/audio assets.
+- Frontend code may create and update DOM, canvas, HUD, overlays, hotbars, styling hooks, input affordances, and rendering composition.
+- Frontend code may import backend-owned game modules through the backend-served `/game/...` route, but should not own gameplay rules, simulation state, persistence rules, procedural generation, entity behavior, inventory rules, health/damage logic, farming/building rules, or world math.
 - Preserve the existing design system, component model, and styling conventions.
 - Implement real user workflows rather than placeholder screens.
 - Cover loading, empty, error, disabled, permission, and success states when relevant.
@@ -47,6 +51,11 @@ Prefer explicit repository evidence over guesses.
 
 ## Backend And API Guidance
 
+- In this repository, backend-owned logic lives under `backend/`.
+- Put gameplay and simulation modules under `backend/game/`, including world generation, chunking, terrain math, vegetation, farming, building, entities, player movement, camera follow logic, health, inventory, day/night, lighting rules, audio rules, and save-state rules.
+- Keep `backend/server.js` responsible for serving frontend files, serving backend gameplay modules from `/game/...`, and exposing API endpoints.
+- Put validation, API state normalization, persistence boundaries, and future server-authoritative game rules in the backend.
+- Do not move UI rendering, DOM updates, CSS, HUD markup, hotbar markup, or browser-only presentation code into backend game modules.
 - Validate inputs at boundaries.
 - Enforce authorization and ownership checks.
 - Return clear, stable errors.

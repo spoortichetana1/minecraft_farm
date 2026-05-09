@@ -4,6 +4,7 @@ const path = require("path");
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_ROOT = path.resolve(__dirname, "..", "frontend");
+const GAME_ROOT = path.resolve(__dirname, "game");
 const gameState = {
   inventory: {
     wheat: 0,
@@ -70,6 +71,21 @@ function getStaticPath(requestPath) {
   return filePath;
 }
 
+function getGameModulePath(requestPath) {
+  if (!requestPath.startsWith("/game/")) {
+    return null;
+  }
+
+  const modulePath = requestPath.slice("/game/".length);
+  const filePath = path.resolve(GAME_ROOT, modulePath);
+
+  if (!filePath.startsWith(GAME_ROOT) || path.extname(filePath) !== ".js") {
+    return null;
+  }
+
+  return filePath;
+}
+
 function normalizeInventory(inventory) {
   return {
     wheat: Math.max(0, Number(inventory?.wheat) || 0),
@@ -124,6 +140,12 @@ const server = http.createServer((request, response) => {
     return;
   }
 
+  const gameModulePath = getGameModulePath(requestPath);
+  if (gameModulePath) {
+    sendFile(response, gameModulePath);
+    return;
+  }
+
   const filePath = getStaticPath(requestPath);
   if (!filePath) {
     sendJson(response, 403, { error: "Forbidden" });
@@ -131,6 +153,17 @@ const server = http.createServer((request, response) => {
   }
 
   sendFile(response, filePath);
+});
+
+server.on("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`Port ${PORT} is already in use.`);
+    console.error("Stop the process using that port, or start this server with another port:");
+    console.error("  $env:PORT=3001; npm start");
+    process.exit(1);
+  }
+
+  throw error;
 });
 
 server.listen(PORT, () => {

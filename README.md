@@ -38,20 +38,16 @@ Then open:
 http://localhost:3000
 ```
 
-You can also serve the `frontend/` folder with any static server. Because the app uses JavaScript modules and a CDN import for Three.js, use `http://` instead of opening `frontend/index.html` directly from `file://`.
+Run through the JavaScript backend instead of serving `frontend/` directly. The frontend imports gameplay modules from the backend-owned `/game/` route, and JavaScript modules require `http://` rather than opening `frontend/index.html` directly from `file://`.
 
 ## Code Layout
 
 - `frontend/index.html` loads the 3D app.
-- `frontend/main.js` bootstraps the app and starts the render loop.
-- `frontend/rendering/` creates the Three.js scene, renderer, camera, and lighting.
-- `frontend/world/` owns terrain height, block patches, trees, rocks, and resource collection.
-- `frontend/player/` owns the stickman, movement, health, damage, and respawn.
-- `frontend/entities/` owns animals and night monsters.
-- `frontend/systems/` owns input, inventory, time, and loop-level systems.
+- `frontend/main.js` bootstraps the app, creates the UI-facing rendering context, and starts the render loop.
 - `frontend/ui/` owns HUD updates and player feedback.
 - `frontend/styles.css` contains fullscreen page and HUD styling.
-- `backend/server.js` serves files from `frontend/` and exposes small REST endpoints.
+- `backend/game/` owns gameplay modules for world generation, player behavior, entities, inventory, saving, time, lighting, and audio.
+- `backend/server.js` serves files from `frontend/`, serves backend gameplay modules at `/game/`, and exposes small REST endpoints.
 - `design/game-design.md` keeps the project design notes.
 
 ## Backend API

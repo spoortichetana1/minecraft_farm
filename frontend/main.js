@@ -1,21 +1,21 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { createAnimals } from "./entities/animals.js";
-import { createMonsterSystem } from "./entities/monsters.js";
-import { createPlayer } from "./player/player.js";
-import { updateFollowCamera } from "./player/camera.js";
-import { createInput, updatePlayerMovement } from "./player/movement.js";
-import { createDayNightSystem } from "./systems/daynight.js";
-import { createInventory } from "./systems/inventory.js";
+import { createAnimals } from "/game/entities/animals.js";
+import { createMonsterSystem } from "/game/entities/monsters.js";
+import { createPlayer } from "/game/player/player.js";
+import { updateFollowCamera } from "/game/player/camera.js";
+import { createInput, updatePlayerMovement } from "/game/player/movement.js";
+import { createDayNightSystem } from "/game/systems/daynight.js";
+import { createInventory } from "/game/systems/inventory.js";
 import { createHud } from "./ui/hud.js";
 import { createHotbar } from "./ui/hotbar.js";
 import { createIntroOverlay } from "./ui/intro.js";
-import { createAudioSystem } from "./systems/audio.js";
-import { createLighting } from "./systems/lighting.js";
-import { createSaveSystem } from "./systems/save.js";
-import { createBuildingSystem } from "./world/building.js";
-import { createFarmingSystem } from "./world/farming.js";
-import { createBlockPatch, createTerrain } from "./world/terrain.js";
-import { interactWithVegetation } from "./world/vegetation.js";
+import { createAudioSystem } from "/game/systems/audio.js";
+import { createLighting } from "/game/systems/lighting.js";
+import { createSaveSystem } from "/game/systems/save.js";
+import { createBuildingSystem } from "/game/world/building.js";
+import { createFarmingSystem } from "/game/world/farming.js";
+import { createBlockPatch, createTerrain } from "/game/world/terrain.js";
+import { interactWithVegetation } from "/game/world/vegetation.js";
 
 function createRenderingContext() {
   const scene = new THREE.Scene();

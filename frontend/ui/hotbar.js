@@ -1,4 +1,4 @@
-import { BUILDABLE_BLOCKS } from "../world/building.js";
+import { BUILDABLE_BLOCKS } from "/game/world/building.js";
 
 export function createHotbar() {
   const root = document.getElementById("hotbar");

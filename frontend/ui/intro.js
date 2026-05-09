@@ -1,5 +1,6 @@
 export function createIntroOverlay(options = {}) {
   const overlay = document.getElementById("intro-overlay");
+  const startButton = document.getElementById("intro-start");
   let started = false;
 
   function startGame() {
@@ -10,12 +11,16 @@ export function createIntroOverlay(options = {}) {
     options.onStart?.();
   }
 
-  document.addEventListener("keydown", (event) => {
-    if (event.code !== "Enter") return;
+  function handleStartKey(event) {
+    if (event.key !== "Enter" && event.code !== "Enter" && event.code !== "NumpadEnter") return;
 
     event.preventDefault();
     startGame();
-  });
+  }
+
+  startButton?.addEventListener("click", startGame);
+  window.addEventListener("keydown", handleStartKey, true);
+  startButton?.focus();
 
   return {
     isStarted() {
