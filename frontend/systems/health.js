@@ -1,7 +1,9 @@
 export function createHealth(maxValue) {
   return {
+    maxHealth: maxValue,
     maxValue,
     currentHealth: maxValue,
+    invincibilitySeconds: 1.2,
     damageCooldown: 0,
     update(deltaTime) {
       this.damageCooldown = Math.max(0, this.damageCooldown - deltaTime);
@@ -10,8 +12,11 @@ export function createHealth(maxValue) {
       if (this.damageCooldown > 0) return false;
 
       this.currentHealth = Math.max(0, this.currentHealth - amount);
-      this.damageCooldown = 0.8;
+      this.damageCooldown = this.invincibilitySeconds;
       return true;
+    },
+    isInvincible() {
+      return this.damageCooldown > 0;
     },
     reset() {
       this.currentHealth = this.maxValue;

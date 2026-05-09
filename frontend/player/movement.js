@@ -77,6 +77,7 @@ export function updatePlayerMovement(player, input, terrain, deltaTime) {
   player.mesh.position.y = terrain.getHeight(player.mesh.position.x, player.mesh.position.z) + 0.05;
 
   return {
-    forward
+    forward,
+    isMoving: moveDirection.lengthSq() > 0
   };
 }

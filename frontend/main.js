@@ -8,6 +8,8 @@ import { createDayNightSystem } from "./systems/daynight.js";
 import { createInventory } from "./systems/inventory.js";
 import { createHud } from "./ui/hud.js";
 import { createHotbar } from "./ui/hotbar.js";
+import { createIntroOverlay } from "./ui/intro.js";
+import { createAudioSystem } from "./systems/audio.js";
 import { createLighting } from "./systems/lighting.js";
 import { createSaveSystem } from "./systems/save.js";
 import { createBuildingSystem } from "./world/building.js";
@@ -54,6 +56,10 @@ const inventory = createInventory();
 const dayNight = createDayNightSystem();
 const hud = createHud();
 const hotbar = createHotbar();
+const audio = createAudioSystem();
+const intro = createIntroOverlay({
+  onStart: () => audio.unlock()
+});
 const input = createInput(renderer.domElement);
 const player = createPlayer(scene, terrain);
 const animals = createAnimals(scene, terrain, 12);
@@ -77,7 +83,8 @@ const context = {
   terrain,
   inventory,
   dayNight,
-  hud
+  hud,
+  building
 };
 
 document.getElementById("load-game")?.addEventListener("click", () => {
@@ -85,6 +92,8 @@ document.getElementById("load-game")?.addEventListener("click", () => {
 });
 
 input.setPrimaryAction(() => {
+  if (!intro.isStarted()) return;
+
   if (building.remove(camera, hud)) return;
   if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
   if (farming.interact(camera, inventory, hud)) return;
@@ -92,6 +101,8 @@ input.setPrimaryAction(() => {
 });
 
 input.setSecondaryAction(() => {
+  if (!intro.isStarted()) return;
+
   building.place(camera, player, hotbar, hud);
 });
 
@@ -99,15 +110,26 @@ function animate() {
   requestAnimationFrame(animate);
 
   const deltaTime = Math.min(clock.getDelta(), 0.05);
+
+  if (!intro.isStarted()) {
+    renderer.render(scene, camera);
+    return;
+  }
+
   const movementState = updatePlayerMovement(player, input, terrain, deltaTime);
 
   terrain.update(player.mesh.position);
   dayNight.update(deltaTime, lights);
+  if (dayNight.survivedNight) {
+    hud.setStatus(`Night survived. Day ${dayNight.dayNumber}`, 4);
+  }
   updateFollowCamera(camera, player, input, movementState);
+  building.update(camera, player, hotbar);
   farming.update(deltaTime);
   saveSystem.update(deltaTime);
   animals.update(deltaTime, context);
   monsters.update(deltaTime, context);
+  audio.update(deltaTime, { dayNight, movementState });
   hud.update(deltaTime, context);
   hotbar.update();
 

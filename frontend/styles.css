@@ -14,6 +14,98 @@ canvas {
   display: block;
 }
 
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(5, 8, 6, 0.78);
+}
+
+.intro-overlay.is-hidden {
+  display: none;
+}
+
+.intro-panel {
+  width: min(720px, 100%);
+  padding: 28px;
+  border: 4px solid #d8d0a8;
+  border-radius: 2px;
+  background: rgba(18, 22, 16, 0.92);
+  box-shadow:
+    inset 0 0 0 2px rgba(0, 0, 0, 0.8),
+    0 18px 45px rgba(0, 0, 0, 0.45);
+  color: #f5f1d5;
+  text-align: center;
+}
+
+.intro-panel h1 {
+  margin: 0 0 14px;
+  color: #f6d66f;
+  font-size: 42px;
+  letter-spacing: 0;
+  text-shadow: 3px 3px 0 #1e241a;
+}
+
+.intro-story {
+  margin: 0 auto 24px;
+  max-width: 560px;
+  color: #e9ead0;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.intro-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.intro-grid > div {
+  padding: 14px;
+  border: 2px solid rgba(216, 208, 168, 0.55);
+  background: rgba(0, 0, 0, 0.26);
+}
+
+.intro-grid h2 {
+  margin: 0 0 10px;
+  color: #9ee06f;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.intro-grid ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro-grid li {
+  color: #ffffff;
+  line-height: 1.35;
+}
+
+.intro-grid span {
+  display: inline-block;
+  min-width: 88px;
+  color: #f6d66f;
+  font-weight: 700;
+}
+
+.intro-start {
+  margin-top: 24px;
+  padding: 10px 14px;
+  border: 2px solid #f6d66f;
+  background: rgba(246, 214, 111, 0.12);
+  color: #ffffff;
+  font-weight: 700;
+}
+
 .hud {
   position: fixed;
   top: 12px;
@@ -37,6 +129,7 @@ canvas {
 
 .hud-row {
   display: flex;
+  align-items: center;
   gap: 12px;
   flex-wrap: wrap;
 }
@@ -60,6 +153,47 @@ canvas {
 .hud-button:focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
+}
+
+.health-ui {
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.health-ui-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hud-hearts {
+  color: #ff5b5b;
+  font-size: 15px;
+  letter-spacing: 0;
+  text-shadow: 1px 1px 0 #250000;
+}
+
+.health-bar {
+  width: 100%;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 2px;
+  background: rgba(40, 10, 10, 0.78);
+}
+
+.health-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: #d92d20;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  transition: width 120ms linear;
+}
+
+.health-ui.is-invincible .health-bar-fill {
+  background: #ff9f1c;
 }
 
 .crosshair {
@@ -130,4 +264,40 @@ canvas {
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.death-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  display: none;
+  transform: translate(-50%, -50%);
+  padding: 16px 24px;
+  border: 3px solid #ffdad6;
+  border-radius: 2px;
+  background: rgba(85, 0, 0, 0.82);
+  color: #ffffff;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-shadow: 3px 3px 0 #250000;
+}
+
+.death-message.is-visible {
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .intro-panel {
+    padding: 20px;
+  }
+
+  .intro-panel h1 {
+    font-size: 34px;
+  }
+
+  .intro-grid {
+    grid-template-columns: 1fr;
+  }
 }

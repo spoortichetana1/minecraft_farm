@@ -4,17 +4,21 @@ const BUILD_RANGE = 7;
 const BLOCK_SIZE = 1;
 
 export const BUILDABLE_BLOCKS = [
-  { type: "dirt", label: "Dirt", color: 0x8b5a2b },
   { type: "grass", label: "Grass", color: 0x2f9e44 },
+  { type: "dirt", label: "Dirt", color: 0x8b5a2b },
   { type: "wood", label: "Wood", color: 0x9c6a3a },
   { type: "stone", label: "Stone", color: 0x7a7d82 },
-  { type: "farmland", label: "Farm", color: 0x6b4423, height: 0.18 }
+  { type: "farmland", label: "Farmland", color: 0x6b4423, height: 0.18 }
 ];
 
 const BLOCK_BY_TYPE = Object.fromEntries(BUILDABLE_BLOCKS.map((block) => [block.type, block]));
 
 function keyForCell(cell) {
   return `${cell.x},${cell.level},${cell.z}`;
+}
+
+function cellKey(x, level, z) {
+  return `${x},${level},${z}`;
 }
 
 function getCellPosition(terrain, cell, blockType) {
@@ -60,16 +64,34 @@ function getPlacementCell(hit) {
   };
 }
 
-function isInsidePlayer(cell, player) {
+function isInsidePlayer(cell, player, terrain, blockType) {
   const playerPosition = player.mesh.position;
-  const horizontalDistance = Math.hypot(cell.x - playerPosition.x, cell.z - playerPosition.z);
-  return horizontalDistance < 0.9 && Math.abs(cell.level) < 2;
+  const block = BLOCK_BY_TYPE[blockType];
+  const blockCenter = getCellPosition(terrain, cell, blockType);
+  const halfHeight = (block.height ?? BLOCK_SIZE) / 2;
+  const overlapsX = Math.abs(blockCenter.x - playerPosition.x) < 0.75;
+  const overlapsZ = Math.abs(blockCenter.z - playerPosition.z) < 0.75;
+  const overlapsY = playerPosition.y < blockCenter.y + halfHeight + 1.7 && playerPosition.y + 1.7 > blockCenter.y - halfHeight;
+
+  return overlapsX && overlapsY && overlapsZ;
 }
 
 export function createBuildingSystem(scene, terrain, farming) {
   const raycaster = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
   const blocks = new Map();
+  const previewMaterial = new THREE.LineBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.8
+  });
+  const preview = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(1.04, 1.04, 1.04)),
+    previewMaterial
+  );
+
+  preview.visible = false;
+  scene.add(preview);
 
   function getBlockMeshes() {
     return [...blocks.values()].map((block) => block.mesh);
@@ -93,15 +115,32 @@ export function createBuildingSystem(scene, terrain, farming) {
     blocks.set(keyForCell(cell), { type, cell, mesh });
 
     if (type === "farmland" && cell.level === 0) {
-      farming.addFarmlandPlot(cell.x, cell.z, mesh);
+      farming?.addFarmlandPlot(cell.x, cell.z, mesh);
     }
 
     return true;
   }
 
+  function getPlacementPreview(camera, player, selected) {
+    const hit = raycast(camera, true);
+    if (!hit) return { valid: false, cell: null };
+
+    const cell = getPlacementCell(hit);
+    const key = keyForCell(cell);
+    const occupied = blocks.has(key);
+    const insidePlayer = isInsidePlayer(cell, player, terrain, selected.type);
+
+    return {
+      valid: !occupied && !insidePlayer,
+      cell,
+      occupied,
+      insidePlayer
+    };
+  }
+
   function removeBlock(block) {
     if (block.type === "farmland" && block.cell.level === 0) {
-      farming.removeFarmlandPlot(block.cell.x, block.cell.z, { keepMesh: true });
+      farming?.removeFarmlandPlot(block.cell.x, block.cell.z, { keepMesh: true });
     }
 
     if (block.mesh.parent) {
@@ -110,30 +149,38 @@ export function createBuildingSystem(scene, terrain, farming) {
     blocks.delete(keyForCell(block.cell));
   }
 
+  function hasBlockAt(x, level, z) {
+    return blocks.has(cellKey(x, level, z));
+  }
+
+  function hasWallNear(x, z, offsets) {
+    return offsets.some((offset) => (
+      hasBlockAt(x + offset.x, 0, z + offset.z)
+      || hasBlockAt(x + offset.x, 1, z + offset.z)
+    ));
+  }
+
   return {
     place(camera, player, hotbar, hud) {
       const selected = hotbar.getSelectedItem();
-      const hit = raycast(camera, true);
+      const target = getPlacementPreview(camera, player, selected);
 
-      if (!hit) {
+      if (!target.cell) {
         hud.setStatus("Aim at terrain or a block");
         return false;
       }
 
-      const cell = getPlacementCell(hit);
-      const key = keyForCell(cell);
-
-      if (blocks.has(key)) {
+      if (target.occupied) {
         hud.setStatus("Block already occupied");
         return true;
       }
 
-      if (isInsidePlayer(cell, player)) {
+      if (target.insidePlayer) {
         hud.setStatus("Cannot place block inside player");
         return true;
       }
 
-      addBlock(selected.type, cell);
+      addBlock(selected.type, target.cell);
       hud.setStatus(`Placed ${selected.label}`);
       return true;
     },
@@ -153,6 +200,27 @@ export function createBuildingSystem(scene, terrain, farming) {
     },
     getBlocks() {
       return [...blocks.values()];
+    },
+    isPlayerSheltered(player) {
+      const x = Math.round(player.mesh.position.x);
+      const z = Math.round(player.mesh.position.z);
+      const north = hasWallNear(x, z, [{ x: 0, z: -1 }, { x: 0, z: -2 }]);
+      const south = hasWallNear(x, z, [{ x: 0, z: 1 }, { x: 0, z: 2 }]);
+      const west = hasWallNear(x, z, [{ x: -1, z: 0 }, { x: -2, z: 0 }]);
+      const east = hasWallNear(x, z, [{ x: 1, z: 0 }, { x: 2, z: 0 }]);
+      const roof = hasBlockAt(x, 2, z) || hasBlockAt(x, 3, z);
+
+      return north && south && west && east && roof;
+    },
+    update(camera, player, hotbar) {
+      const selected = hotbar.getSelectedItem();
+      const target = getPlacementPreview(camera, player, selected);
+
+      preview.visible = Boolean(target.cell);
+      if (!target.cell) return;
+
+      preview.position.copy(getCellPosition(terrain, target.cell, selected.type));
+      previewMaterial.color.setHex(target.valid ? 0xffffff : 0xff5544);
     },
     getState() {
       return [...blocks.values()].map((block) => ({

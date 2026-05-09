@@ -3,9 +3,21 @@ export function createDayNightSystem() {
     value: 0.3,
     dayLengthSeconds: 180,
     isNight: false,
+    dayNumber: 1,
+    nightsSurvived: 0,
+    survivedNight: false,
     update(deltaTime, lighting) {
+      const wasNight = this.isNight;
+
       this.value = (this.value + deltaTime / this.dayLengthSeconds) % 1;
       this.isNight = this.value >= 0.7 || this.value < 0.18;
+      this.survivedNight = wasNight && !this.isNight;
+
+      if (this.survivedNight) {
+        this.dayNumber++;
+        this.nightsSurvived++;
+      }
+
       lighting.updateForDayNight(this);
     },
     getSunAngle() {
