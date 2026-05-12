@@ -2,107 +2,48 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 import { randomChoice, randomRange } from "../utils/math.js";
 import { CHUNK_SIZE } from "./chunks.js";
 
-const TREE_VARIANTS = [
-  {
-    name: "small",
-    trunkHeight: 1.25,
-    trunkTopRadius: 0.15,
-    trunkBottomRadius: 0.2,
-    leafRadius: 0.62,
-    leafY: 1.45,
-    woodYield: 1
-  },
-  {
-    name: "medium",
-    trunkHeight: 1.7,
-    trunkTopRadius: 0.18,
-    trunkBottomRadius: 0.25,
-    leafRadius: 0.82,
-    leafY: 1.95,
-    woodYield: 2
-  },
-  {
-    name: "large",
-    trunkHeight: 2.25,
-    trunkTopRadius: 0.24,
-    trunkBottomRadius: 0.32,
-    leafRadius: 1.05,
-    leafY: 2.55,
-    woodYield: 3
-  }
-];
-
 function markShadow(mesh) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 }
 
-function pickTreeVariant(random = Math.random) {
-  const roll = random();
-
-  if (roll < 0.45) return TREE_VARIANTS[0];
-  if (roll < 0.85) return TREE_VARIANTS[1];
-  return TREE_VARIANTS[2];
-}
-
-function createLeafPuff(radius, color) {
-  const mesh = new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 10, 8),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.85 })
-  );
-
-  mesh.scale.y = 0.85;
-  markShadow(mesh);
-  return mesh;
-}
-
-function createTree(scene, terrain, x, z, parent = scene, id = null, variant = pickTreeVariant()) {
-  const tree = new THREE.Group();
-  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 });
-  const leafColors = [0x1f7a32, 0x2f8f3f, 0x276b30];
+function createPineTree(scene, terrain, x, z, parent, id) {
+  const pine = new THREE.Group();
+  const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x5a3824, roughness: 0.9 });
+  const needleMaterial = new THREE.MeshStandardMaterial({ color: randomChoice([0x173d2a, 0x1f4f35, 0x244737]), roughness: 0.88 });
+  const snowMaterial = new THREE.MeshStandardMaterial({ color: 0xf5fbff, roughness: 0.75 });
+  const height = randomRange(2.2, 4.1);
   const harvestTargets = [];
 
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(
-      variant.trunkTopRadius,
-      variant.trunkBottomRadius,
-      variant.trunkHeight,
-      8
-    ),
-    trunkMaterial
-  );
-  trunk.position.y = variant.trunkHeight / 2;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.22, height * 0.72, 8), trunkMaterial);
+  trunk.position.y = height * 0.36;
   markShadow(trunk);
-  tree.add(trunk);
+  pine.add(trunk);
   harvestTargets.push(trunk);
 
-  const canopyOffsets = [
-    [0, 0, 0, 1],
-    [0.42, -0.05, 0, 0.78],
-    [-0.42, -0.04, 0.08, 0.76],
-    [0.05, -0.02, 0.42, 0.72],
-    [-0.04, -0.02, -0.42, 0.72],
-    [0, 0.42, 0, 0.58]
-  ];
+  for (let i = 0; i < 4; i++) {
+    const radius = 0.95 - i * 0.17;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(radius, 1.15, 9), needleMaterial);
+    cone.position.y = height * 0.42 + i * 0.55;
+    markShadow(cone);
+    pine.add(cone);
+    harvestTargets.push(cone);
 
-  for (const [offsetX, offsetY, offsetZ, scale] of canopyOffsets) {
-    const leaves = createLeafPuff(variant.leafRadius * scale, randomChoice(leafColors));
-    leaves.position.set(offsetX * variant.leafRadius, variant.leafY + offsetY * variant.leafRadius, offsetZ * variant.leafRadius);
-    tree.add(leaves);
-    harvestTargets.push(leaves);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(radius * 0.82, 0.22, 9), snowMaterial);
+    cap.position.y = cone.position.y + 0.27;
+    markShadow(cap);
+    pine.add(cap);
   }
 
-  tree.position.set(x, terrain.getHeight(x, z), z);
-  parent.add(tree);
+  pine.position.set(x, terrain.getHeight(x, z), z);
+  parent.add(pine);
 
   const resource = {
-    type: "tree",
+    type: "pine",
     resource: "wood",
     id,
-    size: variant.name,
-    woodYield: variant.woodYield,
-    mesh: tree,
-    trunk,
+    woodYield: height > 3.2 ? 3 : 2,
+    mesh: pine,
     harvestTargets,
     alive: true
   };
@@ -114,43 +55,68 @@ function createTree(scene, terrain, x, z, parent = scene, id = null, variant = p
   return resource;
 }
 
-function createFlower(scene, terrain, x, z, color, parent = scene) {
-  const flower = new THREE.Group();
-  const stemMaterial = new THREE.MeshStandardMaterial({ color: 0x2f7d32, roughness: 0.9 });
-  const topMaterial = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
+function createSnowRock(terrain, x, z, parent) {
+  const rock = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(randomRange(0.35, 0.85), 0),
+    new THREE.MeshStandardMaterial({ color: randomChoice([0x9ab0bd, 0x7f96a3, 0xb8cdd8]), roughness: 0.95 })
+  );
 
-  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.35, 6), stemMaterial);
-  stem.position.y = 0.175;
-  flower.add(stem);
+  rock.scale.set(randomRange(1, 1.8), randomRange(0.45, 0.9), randomRange(0.8, 1.45));
+  rock.rotation.set(randomRange(0, 0.35), randomRange(0, Math.PI), randomRange(0, 0.35));
+  rock.position.set(x, terrain.getHeight(x, z) + 0.14, z);
+  markShadow(rock);
+  parent.add(rock);
 
-  const top = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), topMaterial);
-  top.position.y = 0.4;
-  flower.add(top);
+  const snowCap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.36, 8, 6),
+    new THREE.MeshStandardMaterial({ color: 0xf5fbff, roughness: 0.8 })
+  );
+  snowCap.scale.set(1.35, 0.25, 1);
+  snowCap.position.set(x, rock.position.y + 0.28, z);
+  parent.add(snowCap);
+}
 
-  flower.position.set(x, terrain.getHeight(x, z), z);
-  parent.add(flower);
+function createFrozenLake(terrain, x, z, parent) {
+  const lake = new THREE.Mesh(
+    new THREE.CircleGeometry(randomRange(1.6, 3.4), 24),
+    new THREE.MeshStandardMaterial({
+      color: randomChoice([0xa7d8ef, 0x8bc4de, 0xc4ecff]),
+      roughness: 0.25,
+      transparent: true,
+      opacity: 0.78
+    })
+  );
+
+  lake.rotation.x = -Math.PI / 2;
+  lake.position.set(x, terrain.getHeight(x, z) + 0.025, z);
+  lake.receiveShadow = true;
+  parent.add(lake);
+}
+
+function createSnowDrift(terrain, x, z, parent) {
+  const drift = new THREE.Mesh(
+    new THREE.SphereGeometry(randomRange(0.35, 0.75), 10, 6),
+    new THREE.MeshStandardMaterial({ color: 0xf5fbff, roughness: 0.85 })
+  );
+
+  drift.scale.set(randomRange(1.4, 2.6), randomRange(0.18, 0.34), randomRange(0.9, 1.7));
+  drift.position.set(x, terrain.getHeight(x, z) + 0.08, z);
+  drift.rotation.y = randomRange(0, Math.PI);
+  parent.add(drift);
 }
 
 export function spawnTrees(scene, terrain, count) {
   const resources = [];
 
   for (let i = 0; i < count; i++) {
-    const x = randomRange(-21, 21);
-    const z = randomRange(-21, 21);
-
-    if (Math.abs(x) < 4 && Math.abs(z - 7) < 4) continue;
-    resources.push(createTree(scene, terrain, x, z));
+    resources.push(createPineTree(scene, terrain, randomRange(-21, 21), randomRange(-21, 21), scene, `pine:legacy:${i}`));
   }
 
   return resources;
 }
 
-export function scatterWildflowers(scene, terrain, count) {
-  const colors = [0xff3b30, 0xffd60a, 0xffffff, 0x9b5de5];
-
-  for (let i = 0; i < count; i++) {
-    createFlower(scene, terrain, randomRange(-24, 24), randomRange(-24, 24), randomChoice(colors));
-  }
+export function scatterWildflowers() {
+  // Snow biome keeps the ground quiet and frozen.
 }
 
 export function createChunkVegetation(scene, terrain, chunkX, chunkZ, random, removedResourceIds) {
@@ -158,32 +124,37 @@ export function createChunkVegetation(scene, terrain, chunkX, chunkZ, random, re
   const resources = [];
   const minX = chunkX * CHUNK_SIZE;
   const minZ = chunkZ * CHUNK_SIZE;
-  const flowerColors = [0xff3b30, 0xffd60a, 0xffffff, 0x9b5de5];
 
   scene.add(group);
 
   for (let i = 0; i < 7; i++) {
     const x = minX + random() * CHUNK_SIZE;
     const z = minZ + random() * CHUNK_SIZE;
-    const id = `tree:${chunkX},${chunkZ}:${i}`;
-    const height = terrain.getHeight(x, z);
+    const id = `pine:${chunkX},${chunkZ}:${i}`;
 
     if (removedResourceIds.has(id)) continue;
     if (Math.abs(x) < 4 && Math.abs(z - 7) < 4) continue;
-    if (height < -1.25) continue;
-    if (random() < 0.48) {
-      resources.push(createTree(scene, terrain, x, z, group, id, pickTreeVariant(random)));
+    if (random() < 0.68) {
+      resources.push(createPineTree(scene, terrain, x, z, group, id));
     }
   }
 
-  for (let i = 0; i < 22; i++) {
+  for (let i = 0; i < 7; i++) {
     const x = minX + random() * CHUNK_SIZE;
     const z = minZ + random() * CHUNK_SIZE;
+    if (random() < 0.62) createSnowRock(terrain, x, z, group);
+  }
 
-    if (Math.abs(x) < 3 && Math.abs(z) < 3) continue;
-    if (random() < 0.75) {
-      createFlower(scene, terrain, x, z, randomChoice(flowerColors), group);
-    }
+  for (let i = 0; i < 2; i++) {
+    const x = minX + random() * CHUNK_SIZE;
+    const z = minZ + random() * CHUNK_SIZE;
+    if (random() < 0.34) createFrozenLake(terrain, x, z, group);
+  }
+
+  for (let i = 0; i < 8; i++) {
+    const x = minX + random() * CHUNK_SIZE;
+    const z = minZ + random() * CHUNK_SIZE;
+    if (random() < 0.58) createSnowDrift(terrain, x, z, group);
   }
 
   return {
@@ -195,16 +166,16 @@ export function createChunkVegetation(scene, terrain, chunkX, chunkZ, random, re
 export function interactWithVegetation(resources, player, camera, inventory, hud) {
   const raycaster = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
-  const trunks = resources
+  const targets = resources
     .filter((resource) => resource.alive)
-    .flatMap((resource) => resource.harvestTargets ?? [resource.trunk]);
+    .flatMap((resource) => resource.harvestTargets ?? []);
 
   raycaster.setFromCamera(screenCenter, camera);
-  const hits = raycaster.intersectObjects(trunks, false);
+  const hits = raycaster.intersectObjects(targets, false);
   const hit = hits.find((result) => result.distance <= 4);
 
   if (!hit) {
-    hud.setStatus("Aim at a tree trunk");
+    hud.setStatus("Aim at a pine tree");
     return false;
   }
 
@@ -214,7 +185,7 @@ export function interactWithVegetation(resources, player, camera, inventory, hud
   tree.alive = false;
   tree.mesh.parent.remove(tree.mesh);
   if (tree.id) resources.removedResourceIds?.add(tree.id);
-  inventory.addItem(tree.resource, tree.woodYield ?? 1);
-  hud.setStatus(`+${tree.woodYield ?? 1} wood`);
+  inventory.addItem(tree.resource, tree.woodYield ?? 2);
+  hud.setStatus(`+${tree.woodYield ?? 2} wood`);
   return true;
 }

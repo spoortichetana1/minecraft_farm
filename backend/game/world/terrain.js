@@ -12,7 +12,11 @@ import {
 import { createChunkVegetation } from "./vegetation.js";
 
 export function getTerrainHeight(x, z) {
-  return Math.sin(x * 0.2) + Math.cos(z * 0.2);
+  const rollingHill = Math.sin(x * 0.075) * 0.95 + Math.cos(z * 0.068) * 0.82;
+  const smoothDrift = Math.sin((x + z) * 0.042) * 0.48;
+  const iceShelf = Math.cos((x - z) * 0.12) * 0.12;
+
+  return rollingHill + smoothDrift + iceShelf;
 }
 
 export function clampToWorld(value) {
@@ -25,8 +29,9 @@ function createTerrainChunkMesh(chunkX, chunkZ) {
 
   const positions = geometry.attributes.position;
   const colors = [];
-  const grass = new THREE.Color(0x2f9e44);
-  const darkGrass = new THREE.Color(0x1f6f35);
+  const snow = new THREE.Color(0xf5fbff);
+  const blueShadow = new THREE.Color(0x9fc9df);
+  const iceHighlight = new THREE.Color(0xd9f2ff);
   const centerX = chunkX * CHUNK_SIZE + CHUNK_SIZE / 2;
   const centerZ = chunkZ * CHUNK_SIZE + CHUNK_SIZE / 2;
   const random = createChunkRandom(chunkX, chunkZ, 17);
@@ -37,7 +42,7 @@ function createTerrainChunkMesh(chunkX, chunkZ) {
     const height = getTerrainHeight(x, z);
     const colorNoise = (random() - 0.5) * 0.25;
     const colorMix = clamp((height + 2) / 4 + colorNoise, 0, 1);
-    const color = darkGrass.clone().lerp(grass, colorMix);
+    const color = blueShadow.clone().lerp(snow, colorMix).lerp(iceHighlight, Math.max(0, colorNoise) * 0.35);
 
     positions.setY(i, height);
     colors.push(color.r, color.g, color.b);
@@ -58,9 +63,55 @@ function createTerrainChunkMesh(chunkX, chunkZ) {
   return mesh;
 }
 
+function createSnowEffect(scene) {
+  const particleCount = 900;
+  const range = 90;
+  const positions = new Float32Array(particleCount * 3);
+  const speeds = new Float32Array(particleCount);
+
+  for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * range;
+    positions[i * 3 + 1] = Math.random() * 35 + 8;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * range;
+    speeds[i] = 0.045 + Math.random() * 0.045;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  const material = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 0.08,
+    transparent: true,
+    opacity: 0.78,
+    depthWrite: false
+  });
+  const points = new THREE.Points(geometry, material);
+  scene.add(points);
+
+  return {
+    update(playerPosition) {
+      for (let i = 0; i < particleCount; i++) {
+        const index = i * 3;
+        positions[index] += Math.sin(i * 12.9898) * 0.012;
+        positions[index + 1] -= speeds[i];
+        positions[index + 2] += Math.cos(i * 78.233) * 0.01;
+
+        if (positions[index + 1] < playerPosition.y - 1) {
+          positions[index] = playerPosition.x + (Math.random() - 0.5) * range;
+          positions[index + 1] = playerPosition.y + Math.random() * 28 + 12;
+          positions[index + 2] = playerPosition.z + (Math.random() - 0.5) * range;
+        }
+      }
+
+      geometry.attributes.position.needsUpdate = true;
+    }
+  };
+}
+
 export function createTerrain(scene) {
   const chunks = new Map();
   const removedResourceIds = new Set();
+  const snowEffect = createSnowEffect(scene);
 
   function loadChunk(chunkX, chunkZ) {
     const key = getChunkKey(chunkX, chunkZ);
@@ -117,6 +168,8 @@ export function createTerrain(scene) {
         unloadChunk(key);
       }
     }
+
+    snowEffect.update(playerPosition);
   }
 
   const terrain = {
@@ -152,15 +205,15 @@ function createBlock(scene, terrain, x, z, color) {
 }
 
 export function createBlockPatch(scene, terrain) {
-  const grassColor = 0x2f9e44;
-  const dirtColor = 0x8b5a2b;
+  const snowColor = 0xf5fbff;
+  const iceRockColor = 0x8da9b8;
 
   for (let x = -5; x <= 5; x++) {
     for (let z = -5; z <= 5; z++) {
       if ((x + z) % 5 === 0) {
-        createBlock(scene, terrain, x, z, dirtColor);
+        createBlock(scene, terrain, x, z, iceRockColor);
       } else if (Math.random() > 0.25) {
-        createBlock(scene, terrain, x, z, grassColor);
+        createBlock(scene, terrain, x, z, snowColor);
       }
     }
   }

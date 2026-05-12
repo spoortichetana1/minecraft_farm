@@ -62,7 +62,7 @@ const intro = createIntroOverlay({
 });
 const input = createInput(renderer.domElement);
 const player = createPlayer(scene, terrain);
-const animals = createAnimals(scene, terrain, 12);
+const animals = createAnimals(scene, terrain, 56);
 const monsters = createMonsterSystem(scene, terrain);
 const farming = createFarmingSystem(scene, terrain);
 const building = createBuildingSystem(scene, terrain, farming);
