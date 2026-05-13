@@ -41,7 +41,10 @@ export function createLighting(scene) {
       sun.intensity = 0.08 + dayAmount * 0.95;
       sun.color.copy(daySun).lerp(sunsetSun, sunsetAmount).lerp(nightSun, nightAmount * 0.45);
 
-      scene.background = daySky
+      const biomeSky = scene.userData.biomeAtmosphere?.background ?? daySky.getHex();
+      const biomeDaySky = new THREE.Color(biomeSky);
+
+      scene.background = biomeDaySky
         .clone()
         .lerp(sunsetSky, sunsetAmount)
         .lerp(nightSky, nightAmount);
