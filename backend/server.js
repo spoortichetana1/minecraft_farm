@@ -72,11 +72,13 @@ function getStaticPath(requestPath) {
 }
 
 function getGameModulePath(requestPath) {
-  if (!requestPath.startsWith("/game/")) {
+  if (!requestPath.startsWith("/game/") && !requestPath.startsWith("/backend/game/")) {
     return null;
   }
 
-  const modulePath = requestPath.slice("/game/".length);
+  const modulePath = requestPath.startsWith("/backend/game/")
+    ? requestPath.slice("/backend/game/".length)
+    : requestPath.slice("/game/".length);
   const filePath = path.resolve(GAME_ROOT, modulePath);
 
   if (!filePath.startsWith(GAME_ROOT) || path.extname(filePath) !== ".js") {

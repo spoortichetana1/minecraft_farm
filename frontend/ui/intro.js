@@ -12,6 +12,11 @@ export function createIntroOverlay(options = {}) {
   const fullscreenToggle = document.getElementById("fullscreen-toggle");
   let started = false;
 
+  console.log("[FarmCraft] Menu initialized", {
+    overlayFound: Boolean(overlay),
+    startButtonFound: Boolean(startButton)
+  });
+
   function showPanel(panel) {
     howToPlayModal?.classList.remove("is-visible");
     settingsPanel?.classList.remove("is-visible");
@@ -32,14 +37,21 @@ export function createIntroOverlay(options = {}) {
   }
 
   function startGame() {
+    console.log("[FarmCraft] Start button clicked", {
+      gameStarted: started
+    });
+
     if (started) return;
 
     started = true;
-    console.log("Start Game clicked");
     closePanels();
     overlay?.classList.add("is-hidden");
     overlay?.setAttribute("aria-hidden", "true");
     startButton?.blur();
+    console.log("[FarmCraft] Menu hidden", {
+      overlayHidden: overlay?.classList.contains("is-hidden"),
+      pointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : null
+    });
     options.onStart?.();
   }
 

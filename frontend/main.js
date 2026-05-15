@@ -1,21 +1,21 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
-import { createAnimals } from "/game/entities/animals.js";
-import { createMonsterSystem } from "/game/entities/monsters.js";
-import { createPlayer } from "/game/player/player.js";
-import { updateFollowCamera } from "/game/player/camera.js";
-import { createInput, updatePlayerMovement } from "/game/player/movement.js";
-import { createDayNightSystem } from "/game/systems/daynight.js";
-import { createInventory } from "/game/systems/inventory.js";
+import { createAnimals } from "/backend/game/entities/animals.js";
+import { createMonsterSystem } from "/backend/game/entities/monsters.js";
+import { createPlayer } from "/backend/game/player/player.js";
+import { updateFollowCamera } from "/backend/game/player/camera.js";
+import { createInput, updatePlayerMovement } from "/backend/game/player/movement.js";
+import { createDayNightSystem } from "/backend/game/systems/daynight.js";
+import { createInventory } from "/backend/game/systems/inventory.js";
 import { createHud } from "./ui/hud.js";
 import { createHotbar } from "./ui/hotbar.js";
 import { createIntroOverlay } from "./ui/intro.js";
-import { createAudioSystem } from "/game/systems/audio.js";
-import { createLighting } from "/game/systems/lighting.js";
-import { createSaveSystem } from "/game/systems/save.js";
-import { createBuildingSystem } from "/game/world/building.js";
-import { createFarmingSystem } from "/game/world/farming.js";
-import { createBlockPatch, createTerrain } from "/game/world/terrain.js";
-import { interactWithVegetation } from "/game/world/vegetation.js";
+import { createAudioSystem } from "/backend/game/systems/audio.js";
+import { createLighting } from "/backend/game/systems/lighting.js";
+import { createSaveSystem } from "/backend/game/systems/save.js";
+import { createBuildingSystem } from "/backend/game/world/building.js";
+import { createFarmingSystem } from "/backend/game/world/farming.js";
+import { createBlockPatch, createTerrain } from "/backend/game/world/terrain.js";
+import { interactWithVegetation } from "/backend/game/world/vegetation.js";
 
 function createRenderingContext() {
   const scene = new THREE.Scene();
@@ -63,24 +63,49 @@ const GAME_STATE = {
   PLAYING: "PLAYING",
   PAUSED: "PAUSED"
 };
+let gameStarted = false;
+let gamePaused = false;
 let gameState = GAME_STATE.MENU;
 let menuCameraAngle = 0;
+let animationStarted = false;
 
 function isPlaying() {
-  return gameState === GAME_STATE.PLAYING;
+  return gameStarted && !gamePaused && gameState === GAME_STATE.PLAYING;
 }
 
 function startGame() {
-  if (isPlaying()) return;
+  console.log("[FarmCraft] startGame invoked", {
+    gameStarted,
+    gamePaused,
+    gameState,
+    controlsEnabled: input.enabled
+  });
 
+  gameStarted = true;
+  gamePaused = false;
   gameState = GAME_STATE.PLAYING;
-  console.log("Game Started");
   input.clearKeys();
   input.setEnabled(true);
   audio.unlock();
+  console.log("[FarmCraft] Gameplay state enabled", {
+    gameStarted,
+    gamePaused,
+    gameState,
+    controlsEnabled: input.enabled
+  });
+
+  if (!animationStarted) {
+    startAnimationLoop();
+  }
 
   const pointerLockRequest = input.requestPointerLock();
+  console.log("[FarmCraft] Pointer lock requested", {
+    controlsEnabled: input.enabled,
+    requestCreated: Boolean(pointerLockRequest),
+    pointerLocked: document.pointerLockElement === renderer.domElement
+  });
   pointerLockRequest?.catch?.(() => {
+    console.warn("[FarmCraft] Pointer lock request failed");
     hud.setStatus("Click the game view to lock mouse controls");
   });
 }
@@ -115,6 +140,14 @@ const context = {
   hud,
   building
 };
+
+document.body.dataset.gameReady = "true";
+console.log("[FarmCraft] Game systems initialized", {
+  gameStarted,
+  gamePaused,
+  gameState,
+  controlsEnabled: input.enabled
+});
 
 document.getElementById("load-game")?.addEventListener("click", () => {
   saveSystem.loadGame();
@@ -174,4 +207,16 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-animate();
+function startAnimationLoop() {
+  if (animationStarted) return;
+
+  animationStarted = true;
+  console.log("[FarmCraft] Animation loop started", {
+    gameStarted,
+    gamePaused,
+    gameState
+  });
+  animate();
+}
+
+startAnimationLoop();

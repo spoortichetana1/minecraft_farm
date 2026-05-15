@@ -82,6 +82,36 @@
     <div id="hotbar" class="hotbar" aria-label="Block hotbar"></div>
     <div id="death-message" class="death-message" aria-live="assertive">YOU DIED</div>
     <div class="crosshair" aria-hidden="true"></div>
+    <script>
+      window.addEventListener("DOMContentLoaded", () => {
+        const startButton = document.getElementById("intro-start");
+        const status = document.getElementById("hud-status");
+
+        function showStartupError(message) {
+          if (status) status.textContent = message;
+          console.error("[FarmCraft] Startup error:", message);
+        }
+
+        console.log("[FarmCraft] Start button created:", Boolean(startButton));
+
+        if (location.protocol === "file:") {
+          showStartupError("Run with npm start, then open http://localhost:3000. The game modules cannot load from a file.");
+          return;
+        }
+
+        startButton?.addEventListener("click", () => {
+          setTimeout(() => {
+            const overlay = document.getElementById("intro-overlay");
+            const gameReady = document.body.dataset.gameReady === "true";
+            const stillOnMenu = !overlay?.classList.contains("is-hidden");
+
+            if (!gameReady && stillOnMenu) {
+              showStartupError("Game scripts are still loading or failed to load. Check the browser console and run through npm start.");
+            }
+          }, 0);
+        });
+      });
+    </script>
     <script type="module" src="main.js"></script>
   </body>
 </html>
