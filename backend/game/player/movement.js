@@ -6,8 +6,24 @@ export function createInput(canvas) {
     keys: {},
     yaw: 0,
     pitch: -0.35,
+    enabled: false,
+    sensitivity: 1,
     primaryAction: null,
     secondaryAction: null,
+    setEnabled(enabled) {
+      input.enabled = enabled;
+      if (!enabled) input.clearKeys();
+    },
+    clearKeys() {
+      input.keys = {};
+    },
+    requestPointerLock() {
+      if (!input.enabled || document.pointerLockElement === canvas) return null;
+      return canvas.requestPointerLock?.() ?? null;
+    },
+    setSensitivity(value) {
+      input.sensitivity = clamp(value, 0.25, 2);
+    },
     setPrimaryAction(callback) {
       input.primaryAction = callback;
     },
@@ -29,24 +45,29 @@ export function createInput(canvas) {
 
   canvas.addEventListener("pointerdown", (event) => {
     event.preventDefault();
-    canvas.requestPointerLock();
+    if (!input.enabled) return;
+
+    input.requestPointerLock();
     if (event.button === 0) input.primaryAction?.();
     if (event.button === 2) input.secondaryAction?.();
   });
 
   document.addEventListener("keydown", (event) => {
+    if (!input.enabled) return;
     input.keys[event.code] = true;
   });
 
   document.addEventListener("keyup", (event) => {
+    if (!input.enabled) return;
     input.keys[event.code] = false;
   });
 
   document.addEventListener("mousemove", (event) => {
+    if (!input.enabled) return;
     if (document.pointerLockElement !== canvas) return;
 
-    input.yaw -= event.movementX * 0.002;
-    input.pitch -= event.movementY * 0.002;
+    input.yaw -= event.movementX * 0.002 * input.sensitivity;
+    input.pitch -= event.movementY * 0.002 * input.sensitivity;
     input.pitch = clamp(input.pitch, -1.2, 0.8);
   });
 

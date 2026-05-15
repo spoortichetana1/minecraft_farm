@@ -8,35 +8,56 @@
   </head>
   <body>
     <div id="intro-overlay" class="intro-overlay" role="dialog" aria-modal="true" aria-labelledby="intro-title">
-      <section class="intro-panel">
+      <section class="intro-panel main-menu-panel">
         <h1 id="intro-title">FarmCraft 3D</h1>
         <p class="intro-story">
           You are a lone farmer surviving in a dangerous world.
           Farm during the day.
           Survive monsters at night.
         </p>
+        <div class="menu-actions" aria-label="Main menu">
+          <button id="intro-start" class="menu-button" type="button">Start Game</button>
+          <button id="how-to-play-button" class="menu-button" type="button">How To Play</button>
+          <button id="settings-button" class="menu-button" type="button">Settings</button>
+        </div>
+      </section>
+      <section id="how-to-play-modal" class="menu-modal" role="dialog" aria-modal="true" aria-labelledby="how-to-play-title" aria-hidden="true">
+        <h2 id="how-to-play-title">How To Play</h2>
         <div class="intro-grid">
           <div>
-            <h2>Controls</h2>
+            <h3>Controls</h3>
             <ul>
               <li><span>WASD</span> Move</li>
-              <li><span>Mouse</span> Look around</li>
-              <li><span>Left Click</span> Remove block</li>
-              <li><span>Right Click</span> Place block</li>
-              <li><span>1-5</span> Select block</li>
+              <li><span>Mouse</span> Look Around</li>
+              <li><span>Left Click</span> Break Block</li>
+              <li><span>Right Click</span> Place Block</li>
+              <li><span>1-5</span> Select Block</li>
             </ul>
           </div>
           <div>
-            <h2>Goals</h2>
+            <h3>Goals</h3>
             <ul>
-              <li>Collect wood</li>
+              <li>Gather resources</li>
               <li>Farm crops</li>
               <li>Build shelter</li>
-              <li>Survive the night</li>
+              <li>Survive monsters at night</li>
             </ul>
           </div>
         </div>
-        <button id="intro-start" class="intro-start" type="button">Press ENTER to start</button>
+        <button id="how-to-play-close" class="menu-button menu-button-small" type="button">Close</button>
+      </section>
+      <section id="settings-panel" class="menu-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
+        <h2 id="settings-title">Settings</h2>
+        <label class="setting-row" for="music-volume">
+          <span>Music Volume</span>
+          <input id="music-volume" type="range" min="0" max="100" value="70">
+        </label>
+        <label class="setting-row" for="mouse-sensitivity">
+          <span>Mouse Sensitivity</span>
+          <input id="mouse-sensitivity" type="range" min="25" max="200" value="100">
+        </label>
+        <button id="fullscreen-toggle" class="menu-button menu-button-small" type="button">Toggle Fullscreen</button>
+        <button id="settings-close" class="menu-button menu-button-small" type="button">Close</button>
       </section>
     </div>
     <div class="hud">

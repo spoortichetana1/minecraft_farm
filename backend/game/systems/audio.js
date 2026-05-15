@@ -138,6 +138,17 @@ export function createAudioSystem() {
   };
   let unlocked = false;
   let footstepTimer = 0;
+  let masterVolume = 0.7;
+
+  function applyVolume() {
+    clips.birds.volume = 0.22 * masterVolume;
+    clips.wind.volume = 0.18 * masterVolume;
+    clips.night.volume = 0.28 * masterVolume;
+    clips.monsters.volume = 0.16 * masterVolume;
+    clips.footsteps.volume = 0.35 * masterVolume;
+  }
+
+  applyVolume();
 
   function unlock() {
     if (unlocked) return;
@@ -160,6 +171,10 @@ export function createAudioSystem() {
 
   return {
     unlock,
+    setVolume(value) {
+      masterVolume = Math.max(0, Math.min(1, value));
+      applyVolume();
+    },
     update(deltaTime, context) {
       if (!unlocked) return;
 

@@ -57,10 +57,39 @@ const dayNight = createDayNightSystem();
 const hud = createHud();
 const hotbar = createHotbar();
 const audio = createAudioSystem();
-const intro = createIntroOverlay({
-  onStart: () => audio.unlock()
-});
 const input = createInput(renderer.domElement);
+const GAME_STATE = {
+  MENU: "MENU",
+  PLAYING: "PLAYING",
+  PAUSED: "PAUSED"
+};
+let gameState = GAME_STATE.MENU;
+let menuCameraAngle = 0;
+
+function isPlaying() {
+  return gameState === GAME_STATE.PLAYING;
+}
+
+function startGame() {
+  if (isPlaying()) return;
+
+  gameState = GAME_STATE.PLAYING;
+  console.log("Game Started");
+  input.clearKeys();
+  input.setEnabled(true);
+  audio.unlock();
+
+  const pointerLockRequest = input.requestPointerLock();
+  pointerLockRequest?.catch?.(() => {
+    hud.setStatus("Click the game view to lock mouse controls");
+  });
+}
+
+const intro = createIntroOverlay({
+  onStart: startGame,
+  onMusicVolumeChange: (volume) => audio.setVolume(volume),
+  onMouseSensitivityChange: (sensitivity) => input.setSensitivity(sensitivity)
+});
 const player = createPlayer(scene, terrain);
 const animals = createAnimals(scene, terrain, 72);
 const monsters = createMonsterSystem(scene, terrain);
@@ -92,7 +121,7 @@ document.getElementById("load-game")?.addEventListener("click", () => {
 });
 
 input.setPrimaryAction(() => {
-  if (!intro.isStarted()) return;
+  if (!isPlaying()) return;
 
   if (building.remove(camera, hud)) return;
   if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
@@ -101,7 +130,7 @@ input.setPrimaryAction(() => {
 });
 
 input.setSecondaryAction(() => {
-  if (!intro.isStarted()) return;
+  if (!isPlaying()) return;
 
   building.place(camera, player, hotbar, hud);
 });
@@ -111,7 +140,16 @@ function animate() {
 
   const deltaTime = Math.min(clock.getDelta(), 0.05);
 
-  if (!intro.isStarted()) {
+  if (gameState === GAME_STATE.MENU) {
+    menuCameraAngle += deltaTime * 0.16;
+    const radius = 10;
+    camera.position.set(Math.sin(menuCameraAngle) * radius, 5.4, 7 + Math.cos(menuCameraAngle) * radius);
+    camera.lookAt(player.mesh.position.x, player.mesh.position.y + 1, player.mesh.position.z);
+    renderer.render(scene, camera);
+    return;
+  }
+
+  if (gameState === GAME_STATE.PAUSED) {
     renderer.render(scene, camera);
     return;
   }
