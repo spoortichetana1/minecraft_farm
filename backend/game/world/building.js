@@ -2,13 +2,16 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
 const BUILD_RANGE = 7;
 const BLOCK_SIZE = 1;
+const LIGHT_PROTECTION_RANGE = 7;
+const SHELTER_PROTECTION_RADIUS = 12;
 
 export const BUILDABLE_BLOCKS = [
   { type: "grass", label: "Grass", color: 0x2f9e44 },
   { type: "dirt", label: "Dirt", color: 0x8b5a2b },
   { type: "wood", label: "Wood", color: 0x9c6a3a },
   { type: "stone", label: "Stone", color: 0x7a7d82 },
-  { type: "farmland", label: "Farmland", color: 0x6b4423, height: 0.18 }
+  { type: "farmland", label: "Farmland", color: 0x6b4423, height: 0.18 },
+  { type: "lantern", label: "Lantern", color: 0xffc857, height: 0.55, lightSource: true }
 ];
 
 const BLOCK_BY_TYPE = Object.fromEntries(BUILDABLE_BLOCKS.map((block) => [block.type, block]));
@@ -40,6 +43,16 @@ function createBlockMesh(type) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
+}
+
+function createBlockLight(type) {
+  if (!BLOCK_BY_TYPE[type]?.lightSource) return null;
+
+  const light = new THREE.PointLight(0xffb347, 1.35, LIGHT_PROTECTION_RANGE * 2.1, 1.35);
+  light.castShadow = true;
+  light.shadow.mapSize.width = 512;
+  light.shadow.mapSize.height = 512;
+  return light;
 }
 
 function getPlacementCell(hit) {
@@ -111,8 +124,13 @@ export function createBuildingSystem(scene, terrain, farming) {
     mesh.position.copy(getCellPosition(terrain, cell, type));
     mesh.userData.buildBlock = { type, cell };
     scene.add(mesh);
+    const light = createBlockLight(type);
+    if (light) {
+      light.position.copy(mesh.position).add(new THREE.Vector3(0, 0.35, 0));
+      scene.add(light);
+    }
 
-    blocks.set(keyForCell(cell), { type, cell, mesh });
+    blocks.set(keyForCell(cell), { type, cell, mesh, light });
 
     if (type === "farmland" && cell.level === 0) {
       farming?.addFarmlandPlot(cell.x, cell.z, mesh);
@@ -146,6 +164,9 @@ export function createBuildingSystem(scene, terrain, farming) {
     if (block.mesh.parent) {
       block.mesh.parent.remove(block.mesh);
     }
+    if (block.light?.parent) {
+      block.light.parent.remove(block.light);
+    }
     blocks.delete(keyForCell(block.cell));
   }
 
@@ -158,6 +179,24 @@ export function createBuildingSystem(scene, terrain, farming) {
       hasBlockAt(x + offset.x, 0, z + offset.z)
       || hasBlockAt(x + offset.x, 1, z + offset.z)
     ));
+  }
+
+  function isPositionNearLight(position, range = LIGHT_PROTECTION_RANGE) {
+    return [...blocks.values()].some((block) => {
+      if (!BLOCK_BY_TYPE[block.type]?.lightSource) return false;
+
+      return block.mesh.position.distanceTo(position) <= range;
+    });
+  }
+
+  function isShelteredCell(x, z) {
+    const north = hasWallNear(x, z, [{ x: 0, z: -1 }, { x: 0, z: -2 }]);
+    const south = hasWallNear(x, z, [{ x: 0, z: 1 }, { x: 0, z: 2 }]);
+    const west = hasWallNear(x, z, [{ x: -1, z: 0 }, { x: -2, z: 0 }]);
+    const east = hasWallNear(x, z, [{ x: 1, z: 0 }, { x: 2, z: 0 }]);
+    const roof = hasBlockAt(x, 2, z) || hasBlockAt(x, 3, z);
+
+    return north && south && west && east && roof;
   }
 
   return {
@@ -204,13 +243,25 @@ export function createBuildingSystem(scene, terrain, farming) {
     isPlayerSheltered(player) {
       const x = Math.round(player.mesh.position.x);
       const z = Math.round(player.mesh.position.z);
-      const north = hasWallNear(x, z, [{ x: 0, z: -1 }, { x: 0, z: -2 }]);
-      const south = hasWallNear(x, z, [{ x: 0, z: 1 }, { x: 0, z: 2 }]);
-      const west = hasWallNear(x, z, [{ x: -1, z: 0 }, { x: -2, z: 0 }]);
-      const east = hasWallNear(x, z, [{ x: 1, z: 0 }, { x: 2, z: 0 }]);
-      const roof = hasBlockAt(x, 2, z) || hasBlockAt(x, 3, z);
 
-      return north && south && west && east && roof;
+      return isShelteredCell(x, z);
+    },
+    isPlayerProtected(player) {
+      return this.isPlayerSheltered(player) && isPositionNearLight(player.mesh.position);
+    },
+    isPositionNearLight,
+    getShelterProtectionAt(position) {
+      const x = Math.round(position.x);
+      const z = Math.round(position.z);
+      const sheltered = isShelteredCell(x, z);
+      const lit = isPositionNearLight(position);
+
+      return {
+        protected: sheltered && lit,
+        sheltered,
+        lit,
+        radius: SHELTER_PROTECTION_RADIUS
+      };
     },
     update(camera, player, hotbar) {
       const selected = hotbar.getSelectedItem();

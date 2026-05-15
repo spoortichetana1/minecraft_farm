@@ -1,33 +1,32 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { randomRange } from "../utils/math.js";
 
-const MAX_MONSTERS = 10;
-const SPAWN_INTERVAL_SECONDS = 3.5;
 const MIN_SPAWN_DISTANCE_FROM_PLAYER = 24;
 const MAX_SPAWN_DISTANCE_FROM_PLAYER = 38;
-const DETECTION_RANGE = 20;
-const TOUCH_DAMAGE = 12;
 const TOUCH_RANGE = 1.1;
 const WANDER_SPEED = 0.9;
 const CHASE_SPEED = 2.7;
 const SHELTER_AVOID_RANGE = 12;
+const LIT_AREA_AVOID_RANGE = 9;
+const SPAWN_ATTEMPTS = 8;
 
 function markShadow(mesh) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
 }
 
-function createShadowMonster(scene) {
+function createShadowMonster(scene, elite = false) {
   const monster = new THREE.Group();
   const material = new THREE.MeshStandardMaterial({
-    color: 0x08050d,
-    emissive: 0x15051f,
+    color: elite ? 0x120018 : 0x08050d,
+    emissive: elite ? 0x4d003f : 0x15051f,
+    emissiveIntensity: elite ? 0.65 : 0.25,
     roughness: 0.7
   });
   const eyeMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff1f1f,
-    emissive: 0xff0000,
-    emissiveIntensity: 2,
+    color: elite ? 0xff6f00 : 0xff1f1f,
+    emissive: elite ? 0xff3d00 : 0xff0000,
+    emissiveIntensity: elite ? 3 : 2,
     roughness: 0.35
   });
 
@@ -71,6 +70,10 @@ function createShadowMonster(scene) {
   markShadow(rightLeg);
   monster.add(rightLeg);
 
+  if (elite) {
+    monster.scale.setScalar(1.18);
+  }
+
   scene.add(monster);
   return monster;
 }
@@ -90,24 +93,54 @@ export function createMonsterSystem(scene, terrain) {
   const monsters = [];
   let spawnTimer = 2;
 
-  function spawnMonster(player) {
-    const angle = Math.random() * Math.PI * 2;
-    const distance = randomRange(MIN_SPAWN_DISTANCE_FROM_PLAYER, MAX_SPAWN_DISTANCE_FROM_PLAYER);
-    const x = player.mesh.position.x + Math.cos(angle) * distance;
-    const z = player.mesh.position.z + Math.sin(angle) * distance;
+  function getSpawnPosition(player, building) {
+    let fallback = null;
 
-    const mesh = createShadowMonster(scene);
-    mesh.position.set(x, terrain.getHeight(x, z) + 0.05, z);
+    for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = randomRange(MIN_SPAWN_DISTANCE_FROM_PLAYER, MAX_SPAWN_DISTANCE_FROM_PLAYER);
+      const x = player.mesh.position.x + Math.cos(angle) * distance;
+      const z = player.mesh.position.z + Math.sin(angle) * distance;
+      const position = new THREE.Vector3(x, terrain.getHeight(x, z) + 0.05, z);
+
+      fallback ??= position;
+
+      const protection = building?.getShelterProtectionAt(position);
+      const nearLight = building?.isPositionNearLight(position, LIT_AREA_AVOID_RANGE) ?? false;
+      if (!nearLight && !protection?.sheltered) {
+        return position;
+      }
+    }
+
+    return fallback;
+  }
+
+  function spawnMonster(player, difficulty, building) {
+    const position = getSpawnPosition(player, building);
+    if (!position) return false;
+
+    const elite = Math.random() < difficulty.eliteChance;
+    const mesh = createShadowMonster(scene, elite);
+    const healthMultiplier = elite ? difficulty.eliteHealthMultiplier : 1;
+    const speedMultiplier = elite ? difficulty.eliteSpeedMultiplier : 1;
+    const damageMultiplier = elite ? difficulty.eliteDamageMultiplier : 1;
+
+    mesh.position.copy(position);
     monsters.push({
-      type: "shadow",
+      type: elite ? "elite-shadow" : "shadow",
+      elite,
       mesh,
-      health: 100,
-      speed: CHASE_SPEED,
+      health: difficulty.monsterHealth * healthMultiplier,
+      speed: CHASE_SPEED * difficulty.monsterSpeedMultiplier * speedMultiplier,
+      attackDamage: difficulty.attackDamage * damageMultiplier,
+      attackCooldownSeconds: difficulty.attackCooldownSeconds,
+      attackTimer: randomRange(0, difficulty.attackCooldownSeconds),
       wanderDirection: pickWanderDirection(),
       wanderTimer: randomRange(1.5, 4)
     });
 
-    console.log("Shadow monster spawned in the night.");
+    console.log(`${elite ? "Elite shadow" : "Shadow monster"} spawned on night ${difficulty.night}.`);
+    return true;
   }
 
   function clearMonsters(reason = "cleared") {
@@ -122,20 +155,32 @@ export function createMonsterSystem(scene, terrain) {
 
   return {
     update(deltaTime, context) {
+      const difficulty = context.dayNight.getNightDifficulty();
+
       if (!context.dayNight.isNight) {
         clearMonsters("burned in daylight");
+        context.player.health.invincibilitySeconds = 1.2;
         spawnTimer = 2;
         return;
       }
 
+      context.player.health.invincibilitySeconds = difficulty.playerInvincibilitySeconds;
       spawnTimer -= deltaTime;
-      if (spawnTimer <= 0 && monsters.length < MAX_MONSTERS) {
-        spawnMonster(context.player);
-        spawnTimer = SPAWN_INTERVAL_SECONDS;
+      const maxMonsters = Math.max(1, difficulty.monsterCount);
+      const playerProtected = context.building?.isPlayerProtected(context.player) ?? false;
+      const spawnProtectionMultiplier = playerProtected ? 0.45 : 1;
+      const activeMaxMonsters = Math.max(1, Math.ceil(maxMonsters * spawnProtectionMultiplier));
+      if (spawnTimer <= 0 && monsters.length < activeMaxMonsters) {
+        const spawnCount = Math.min(difficulty.spawnBurstCount, activeMaxMonsters - monsters.length);
+        for (let count = 0; count < spawnCount; count++) {
+          spawnMonster(context.player, difficulty, context.building);
+        }
+        spawnTimer = difficulty.spawnIntervalSeconds / spawnProtectionMultiplier;
       }
 
       for (let i = monsters.length - 1; i >= 0; i--) {
         const monster = monsters[i];
+        monster.attackTimer = Math.max(0, monster.attackTimer - deltaTime);
 
         if (monster.health <= 0) {
           removeMonster(monster);
@@ -145,15 +190,19 @@ export function createMonsterSystem(scene, terrain) {
 
         const toPlayer = context.player.mesh.position.clone().sub(monster.mesh.position);
         let distance = toPlayer.length();
-        const playerSheltered = context.building?.isPlayerSheltered(context.player) ?? false;
+        const playerProtectedNow = context.building?.isPlayerProtected(context.player) ?? false;
+        const monsterNearLight = context.building?.isPositionNearLight(monster.mesh.position, LIT_AREA_AVOID_RANGE) ?? false;
 
-        if (playerSheltered && distance < SHELTER_AVOID_RANGE) {
+        if ((playerProtectedNow && distance < SHELTER_AVOID_RANGE) || monsterNearLight) {
           const awayFromShelter = monster.mesh.position.clone().sub(context.player.mesh.position);
+          if (awayFromShelter.lengthSq() < 0.01) {
+            awayFromShelter.copy(monster.wanderDirection);
+          }
           awayFromShelter.y = 0;
           awayFromShelter.normalize();
-          monster.mesh.position.addScaledVector(awayFromShelter, WANDER_SPEED * 1.4 * deltaTime);
+          monster.mesh.position.addScaledVector(awayFromShelter, WANDER_SPEED * 1.8 * deltaTime);
           monster.mesh.lookAt(monster.mesh.position.clone().add(awayFromShelter));
-        } else if (distance < DETECTION_RANGE) {
+        } else if (distance < difficulty.aggressionRange * (playerProtectedNow ? 0.35 : 1)) {
           toPlayer.y = 0;
           toPlayer.normalize();
           monster.mesh.position.addScaledVector(toPlayer, monster.speed * deltaTime);
@@ -175,14 +224,15 @@ export function createMonsterSystem(scene, terrain) {
         monster.mesh.position.y = terrain.getHeight(monster.mesh.position.x, monster.mesh.position.z) + 0.05;
         distance = context.player.mesh.position.distanceTo(monster.mesh.position);
 
-        if (!playerSheltered && distance < TOUCH_RANGE) {
-          const damageResult = context.player.damage(TOUCH_DAMAGE);
+        if (!playerProtectedNow && distance < TOUCH_RANGE && monster.attackTimer <= 0) {
+          const damageResult = context.player.damage(monster.attackDamage);
+          monster.attackTimer = monster.attackCooldownSeconds;
 
           if (damageResult.died) {
             context.hud.showDeathMessage();
           } else if (damageResult.applied) {
-            context.hud.setStatus("Shadow hit you");
-            console.log("Shadow monster hit the player.");
+            context.hud.setStatus(monster.elite ? "Elite shadow hit you" : "Shadow hit you");
+            console.log(`${monster.elite ? "Elite shadow" : "Shadow monster"} hit the player.`);
           }
         }
       }

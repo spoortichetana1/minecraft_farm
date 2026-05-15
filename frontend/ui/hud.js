@@ -5,6 +5,7 @@ export function createHud() {
   const healthFill = document.getElementById("hud-health-fill");
   const hearts = document.getElementById("hud-hearts");
   const day = document.getElementById("hud-day");
+  const night = document.getElementById("hud-night");
   const time = document.getElementById("hud-time");
   const inventory = document.getElementById("hud-inventory");
   const status = document.getElementById("hud-status");
@@ -41,6 +42,7 @@ export function createHud() {
 
       renderHealth(context.player.health);
       day.textContent = `Day: ${context.dayNight.dayNumber}`;
+      night.textContent = `Night ${context.dayNight.currentNight}`;
       time.textContent = `Time: ${context.dayNight.getLabel()}`;
       inventory.textContent = ["wood", "wheat", ...INVENTORY_TYPES.filter((item) => item !== "wood" && item !== "wheat")]
         .map((item) => `${INVENTORY_LABELS[item]}: ${context.inventory.items[item] ?? 0}`)
@@ -51,9 +53,15 @@ export function createHud() {
       }
 
       if (statusTimer <= 0) {
-        status.textContent = context.dayNight.isNight
-          ? "Night: stay sheltered and survive until sunrise."
-          : "Day: gather wood, farm crops, and build shelter before night.";
+        if (context.dayNight.isBloodMoonApproaching()) {
+          status.textContent = "Blood Moon Approaches...";
+        } else if (context.dayNight.getNightDifficulty().bloodMoon && context.dayNight.isNight) {
+          status.textContent = `Blood Moon ${context.dayNight.currentNight}: survive the onslaught.`;
+        } else {
+          status.textContent = context.dayNight.isNight
+            ? `Night ${context.dayNight.currentNight}: stay sheltered and survive until sunrise.`
+            : "Day: gather wood, farm crops, and build shelter before night.";
+        }
       }
     }
   };
