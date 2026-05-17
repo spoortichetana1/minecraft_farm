@@ -15,6 +15,12 @@ export function createHealth(maxValue) {
       this.damageCooldown = this.invincibilitySeconds;
       return true;
     },
+    heal(amount) {
+      if (amount <= 0 || this.currentHealth >= this.maxValue) return false;
+
+      this.currentHealth = Math.min(this.maxValue, this.currentHealth + amount);
+      return true;
+    },
     isInvincible() {
       return this.damageCooldown > 0;
     },

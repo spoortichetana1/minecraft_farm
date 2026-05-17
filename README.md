@@ -23,9 +23,10 @@ A browser-based 3D survival world built with Three.js. The old 2D canvas version
 
 - Move: `W`, `A`, `S`, `D` or arrow keys
 - Camera: follows the current movement direction
-- Use selected tool / chop: single left mouse click
-- Hunt / collect meat: double left mouse click
-- Place selected block: right mouse click
+- Chop nearby trees: single left mouse click
+- Hunt nearby animals / collect meat: double left mouse click
+- Build protective stone wall: right mouse click
+- Trade supplies for health: `Trade Health` button
 - Select hotbar item: `1`-`6`
 
 ## Run

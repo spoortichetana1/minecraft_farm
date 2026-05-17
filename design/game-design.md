@@ -14,12 +14,12 @@ SurvivorCraft is a browser-based 3D survival game where the player gathers resou
 ## Controls
 
 - Move with `W`, `A`, `S`, `D` or arrow keys.
-- Single left click uses the selected tool, such as chopping trees with the axe.
-- Double left click hunts animals and collects meat when the target is defeated.
-- Right click places the selected build block.
+- Single left click chops nearby trees.
+- Double left click hunts nearby animals and collects meat.
+- Right click builds a protective stone wall.
+- Wood, meat, and stone can be traded for health.
 - Number keys select hotbar items.
 
 ## Out Of Scope
 
 Farming, seeds, wheat, crop growth, crop harvesting, and farm progression are intentionally out of scope. The player fantasy is survivor, not farmer.
-

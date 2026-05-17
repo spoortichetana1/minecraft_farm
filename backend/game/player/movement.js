@@ -2,7 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 import { clamp } from "../utils/math.js";
 
 const WORLD_FORWARD = new THREE.Vector3(0, 0, 1);
-const WORLD_RIGHT = new THREE.Vector3(1, 0, 0);
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const MOVEMENT_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"]);
 
 export function createInput(canvas) {
@@ -98,17 +98,19 @@ export function updatePlayerMovement(player, input, terrain, deltaTime) {
   const moveDirection = new THREE.Vector3();
   const forwardInput = Number(Boolean(input.keys.KeyW || input.keys.ArrowUp))
     - Number(Boolean(input.keys.KeyS || input.keys.ArrowDown));
-  const sideInput = Number(Boolean(input.keys.KeyA || input.keys.ArrowRight))
-    - Number(Boolean(input.keys.KeyD || input.keys.ArrowLeft));
+  const sideInput = Number(Boolean(input.keys.KeyD || input.keys.ArrowRight))
+    - Number(Boolean(input.keys.KeyA || input.keys.ArrowLeft));
+  const forward = input.facingDirection.clone().normalize();
+  const right = new THREE.Vector3().crossVectors(WORLD_UP, forward).normalize();
 
   moveDirection
-    .addScaledVector(WORLD_FORWARD, forwardInput)
-    .addScaledVector(WORLD_RIGHT, sideInput);
+    .addScaledVector(forward, forwardInput)
+    .addScaledVector(right, sideInput);
 
   if (moveDirection.lengthSq() > 0) {
     moveDirection.normalize();
     if (forwardInput !== 0) {
-      input.facingDirection.copy(WORLD_FORWARD).multiplyScalar(forwardInput);
+      input.facingDirection.copy(forward).multiplyScalar(forwardInput);
       input.yaw = Math.atan2(moveDirection.x, moveDirection.z);
     }
     player.mesh.position.addScaledVector(moveDirection, player.speed * deltaTime);

@@ -4,6 +4,7 @@ const BUILD_RANGE = 7;
 const BLOCK_SIZE = 1;
 const LIGHT_PROTECTION_RANGE = 7;
 const SHELTER_PROTECTION_RADIUS = 12;
+const STONE_WALL_PROTECTION_RANGE = 9;
 
 export const BUILDABLE_BLOCKS = [
   { type: "grass", label: "Grass", color: 0x2f9e44 },
@@ -180,6 +181,13 @@ export function createBuildingSystem(scene, terrain) {
     });
   }
 
+  function isPositionNearStoneWall(position, range = STONE_WALL_PROTECTION_RANGE) {
+    return [...blocks.values()].some((block) => (
+      block.type === "stone"
+      && block.mesh.position.distanceTo(position) <= range
+    ));
+  }
+
   function isShelteredCell(x, z) {
     const north = hasWallNear(x, z, [{ x: 0, z: -1 }, { x: 0, z: -2 }]);
     const south = hasWallNear(x, z, [{ x: 0, z: 1 }, { x: 0, z: 2 }]);
@@ -219,6 +227,40 @@ export function createBuildingSystem(scene, terrain) {
       hud.setStatus(`Placed ${selected.label}`);
       return true;
     },
+    placeStoneWall(player, inventory, hud) {
+      const forward = new THREE.Vector3(
+        Math.sin(player.mesh.rotation.y),
+        0,
+        Math.cos(player.mesh.rotation.y)
+      );
+      if (forward.lengthSq() < 0.01) forward.set(0, 0, 1);
+      forward.normalize();
+
+      const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize();
+      const center = player.mesh.position.clone().addScaledVector(forward, 2.2);
+      const wallCells = [-1, 0, 1].map((offset) => ({
+        x: Math.round(center.x + right.x * offset),
+        z: Math.round(center.z + right.z * offset),
+        level: 0
+      }));
+
+      let placed = 0;
+      for (const cell of wallCells) {
+        const key = keyForCell(cell);
+        if (blocks.has(key) || isInsidePlayer(cell, player, terrain, "stone")) continue;
+        if (addBlock("stone", cell)) placed++;
+      }
+
+      if (placed === 0) {
+        hud.setStatus("Stone wall blocked");
+        return false;
+      }
+
+      inventory.addItem("stone", placed);
+      hud.setStatus(`Built stone wall. +${placed} Stone`);
+      hud.showFloatingText?.(`+${placed} Stone`);
+      return true;
+    },
     remove(camera, hud) {
       const hit = raycast(camera, false);
       if (!hit) return false;
@@ -240,20 +282,22 @@ export function createBuildingSystem(scene, terrain) {
       const x = Math.round(player.mesh.position.x);
       const z = Math.round(player.mesh.position.z);
 
-      return isShelteredCell(x, z);
+      return isShelteredCell(x, z) || isPositionNearStoneWall(player.mesh.position);
     },
     isPlayerProtected(player) {
-      return this.isPlayerSheltered(player) && isPositionNearLight(player.mesh.position);
+      return isPositionNearStoneWall(player.mesh.position) || (this.isPlayerSheltered(player) && isPositionNearLight(player.mesh.position));
     },
     isPositionNearLight,
+    isPositionNearStoneWall,
     getShelterProtectionAt(position) {
       const x = Math.round(position.x);
       const z = Math.round(position.z);
-      const sheltered = isShelteredCell(x, z);
+      const stoneWall = isPositionNearStoneWall(position);
+      const sheltered = isShelteredCell(x, z) || stoneWall;
       const lit = isPositionNearLight(position);
 
       return {
-        protected: sheltered && lit,
+        protected: stoneWall || (sheltered && lit),
         sheltered,
         lit,
         radius: SHELTER_PROTECTION_RADIUS

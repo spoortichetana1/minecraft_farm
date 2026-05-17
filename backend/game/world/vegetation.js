@@ -3,7 +3,9 @@ import { randomChoice, randomRange } from "../utils/math.js";
 import { CHUNK_SIZE } from "./chunks.js";
 
 const TREE_CHOP_RANGE = 4;
+const TREE_PROXIMITY_RANGE = 3.2;
 const TREE_WOOD_PER_BREAK = 1;
+const TREE_WOOD_PER_HIT = 1;
 
 function markShadow(mesh) {
   mesh.castShadow = true;
@@ -379,25 +381,29 @@ export function createChunkVegetation(scene, terrain, chunkX, chunkZ, random, re
 export function interactWithVegetation(resources, player, camera, inventory, hud) {
   const raycaster = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
-  const targets = resources
-    .filter((resource) => resource.alive)
-    .flatMap((resource) => resource.harvestTargets ?? []);
+  const livingResources = resources.filter((resource) => resource.alive);
+  const targets = livingResources.flatMap((resource) => resource.harvestTargets ?? []);
 
   raycaster.setFromCamera(screenCenter, camera);
   const hits = raycaster.intersectObjects(targets, false);
   const hit = hits.find((result) => result.distance <= TREE_CHOP_RANGE);
+  const nearbyTree = livingResources
+    .filter((resource) => resource.mesh.position.distanceTo(player.mesh.position) <= TREE_PROXIMITY_RANGE)
+    .sort((a, b) => a.mesh.position.distanceTo(player.mesh.position) - b.mesh.position.distanceTo(player.mesh.position))[0];
 
-  if (!hit) {
-    hud.setStatus("Aim the axe at a tree");
+  if (!hit && !nearbyTree) {
+    hud.setStatus("Move closer to a tree");
     return false;
   }
 
-  const tree = hit.object.userData.treeResource;
+  const tree = hit?.object.userData.treeResource ?? nearbyTree;
   if (!tree?.alive) return false;
 
+  inventory.addItem(tree.resource, TREE_WOOD_PER_HIT);
+  hud.showFloatingText?.("+1 Wood");
   tree.health = Math.max(0, tree.health - 1);
   if (tree.health > 0) {
-    hud.setStatus(`Chopping tree (${tree.health} hits left)`, 0.9);
+    hud.setStatus(`+1 Wood (${tree.health} chops left)`, 0.9);
     return true;
   }
 
@@ -405,7 +411,7 @@ export function interactWithVegetation(resources, player, camera, inventory, hud
   tree.mesh.parent.remove(tree.mesh);
   if (tree.id) resources.removedResourceIds?.add(tree.id);
   inventory.addItem(tree.resource, TREE_WOOD_PER_BREAK);
-  hud.setStatus("+1 Wood");
+  hud.setStatus("+1 Wood. Tree chopped.");
   hud.showFloatingText?.("+1 Wood");
   return true;
 }

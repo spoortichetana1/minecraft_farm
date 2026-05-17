@@ -68,6 +68,12 @@ let gamePaused = false;
 let gameState = GAME_STATE.MENU;
 let menuCameraAngle = 0;
 let animationStarted = false;
+const HEALTH_TRADE_COST = {
+  wood: 3,
+  meat: 1,
+  stone: 1
+};
+const HEALTH_TRADE_AMOUNT = 25;
 
 function isPlaying() {
   return gameStarted && !gamePaused && gameState === GAME_STATE.PLAYING;
@@ -142,16 +148,36 @@ document.getElementById("load-game")?.addEventListener("click", () => {
   saveSystem.loadGame();
 });
 
+document.getElementById("trade-health")?.addEventListener("click", () => {
+  if (!isPlaying()) return;
+
+  const missing = Object.entries(HEALTH_TRADE_COST)
+    .filter(([type, amount]) => (inventory.items[type] ?? 0) < amount)
+    .map(([type, amount]) => `${amount} ${type}`);
+
+  if (missing.length > 0) {
+    hud.setStatus(`Need ${missing.join(", ")} for health trade`);
+    return;
+  }
+
+  if (!player.health.heal(HEALTH_TRADE_AMOUNT)) {
+    hud.setStatus("Health is already full");
+    return;
+  }
+
+  for (const [type, amount] of Object.entries(HEALTH_TRADE_COST)) {
+    inventory.removeItem(type, amount);
+  }
+  hud.setStatus(`Traded supplies for +${HEALTH_TRADE_AMOUNT} health`);
+  hud.showFloatingText?.(`+${HEALTH_TRADE_AMOUNT} Health`);
+});
+
 input.setPrimaryAction(() => {
   if (!isPlaying()) return;
 
   const selectedItem = hotbar.getSelectedItem();
-  if (selectedItem.type === AXE_TOOL_TYPE) {
-    player.swingTool(AXE_TOOL_TYPE);
-    if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
-    monsters.attackNearest(player, hud);
-    return;
-  }
+  if (selectedItem.type === AXE_TOOL_TYPE) player.swingTool(AXE_TOOL_TYPE);
+  if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
 
   if (building.remove(camera, hud)) return;
   monsters.attackNearest(player, hud);
@@ -160,14 +186,14 @@ input.setPrimaryAction(() => {
 input.setDoubleAction(() => {
   if (!isPlaying()) return;
 
-  if (animals.huntNearest(camera, inventory, hud)) return;
+  if (animals.huntNearest(player, inventory, hud)) return;
   monsters.attackNearest(player, hud);
 });
 
 input.setSecondaryAction(() => {
   if (!isPlaying()) return;
 
-  building.place(camera, player, hotbar, hud);
+  building.placeStoneWall(player, inventory, hud);
 });
 
 function animate() {

@@ -7,8 +7,7 @@ const PLAYER_AVOID_DISTANCE = 5;
 const HOSTILE_DETECT_RANGE = 26;
 const HOSTILE_TOUCH_RANGE = 1.25;
 const HOSTILE_DAMAGE = 8;
-const HUNT_RANGE = 5;
-const HUNT_DAMAGE = 1;
+const HUNT_RANGE = 4.2;
 const MEAT_PER_ANIMAL = 1;
 
 function markShadow(mesh) {
@@ -237,36 +236,19 @@ export function createAnimals(scene, terrain, count = ANIMAL_COUNT) {
   }
 
   return {
-    huntNearest(camera, inventory, hud) {
-      const raycaster = new THREE.Raycaster();
-      const screenCenter = new THREE.Vector2(0, 0);
-      const targets = animals
+    huntNearest(player, inventory, hud) {
+      const animal = animals
         .filter((animal) => animal.alive)
-        .map((animal) => animal.mesh);
+        .map((animal) => ({
+          animal,
+          distance: animal.mesh.position.distanceTo(player.mesh.position)
+        }))
+        .filter((entry) => entry.distance <= HUNT_RANGE)
+        .sort((a, b) => a.distance - b.distance)[0]?.animal;
 
-      raycaster.setFromCamera(screenCenter, camera);
-      const hit = raycaster.intersectObjects(targets, true)
-        .find((result) => result.distance <= HUNT_RANGE);
-
-      if (!hit) {
-        hud.setStatus("Double click an animal to collect meat");
+      if (!animal) {
+        hud.setStatus("Move closer to an animal");
         return false;
-      }
-
-      const animal = animals.find((candidate) => {
-        let current = hit.object;
-        while (current) {
-          if (current === candidate.mesh) return true;
-          current = current.parent;
-        }
-        return false;
-      });
-      if (!animal?.alive) return false;
-
-      animal.health = Math.max(0, animal.health - HUNT_DAMAGE);
-      if (animal.health > 0) {
-        hud.setStatus(`${animal.type} wounded`);
-        return true;
       }
 
       animal.alive = false;
