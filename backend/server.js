@@ -7,8 +7,9 @@ const PUBLIC_ROOT = path.resolve(__dirname, "..", "frontend");
 const GAME_ROOT = path.resolve(__dirname, "game");
 const gameState = {
   inventory: {
-    wheat: 0,
-    eggs: 0
+    wood: 0,
+    meat: 0,
+    stone: 0
   },
   updatedAt: new Date().toISOString()
 };
@@ -90,8 +91,9 @@ function getGameModulePath(requestPath) {
 
 function normalizeInventory(inventory) {
   return {
-    wheat: Math.max(0, Number(inventory?.wheat) || 0),
-    eggs: Math.max(0, Number(inventory?.eggs) || 0)
+    wood: Math.max(0, Number(inventory?.wood) || 0),
+    meat: Math.max(0, Number(inventory?.meat) || 0),
+    stone: Math.max(0, Number(inventory?.stone) || 0)
   };
 }
 
@@ -103,7 +105,7 @@ function handleApi(request, requestPath, response) {
 
   if (requestPath === "/api/game-info") {
     sendJson(response, 200, {
-      name: "FarmCraft",
+      name: "SurvivorCraft",
       versions: {
         main: "/"
       }
@@ -169,5 +171,5 @@ server.on("error", (error) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`FarmCraft backend running at http://localhost:${PORT}`);
+  console.log(`SurvivorCraft backend running at http://localhost:${PORT}`);
 });

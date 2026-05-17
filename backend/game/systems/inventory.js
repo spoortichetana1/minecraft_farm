@@ -1,8 +1,6 @@
 export const INVENTORY_LABELS = {
   wood: "Wood",
-  seeds: "Seeds",
-  wheat: "Wheat",
-  eggs: "Eggs",
+  meat: "Meat",
   stone: "Stone"
 };
 
@@ -11,9 +9,7 @@ export const INVENTORY_TYPES = Object.keys(INVENTORY_LABELS);
 function createStartingItems() {
   return {
     wood: 0,
-    seeds: 0,
-    wheat: 0,
-    eggs: 0,
+    meat: 0,
     stone: 0
   };
 }

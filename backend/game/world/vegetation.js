@@ -2,6 +2,9 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 import { randomChoice, randomRange } from "../utils/math.js";
 import { CHUNK_SIZE } from "./chunks.js";
 
+const TREE_CHOP_RANGE = 4;
+const TREE_WOOD_PER_BREAK = 1;
+
 function markShadow(mesh) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
@@ -24,7 +27,18 @@ function addHarvestTarget(resource, mesh) {
 }
 
 function createTreeResource(type, resource, id, woodYield, mesh, harvestTargets) {
-  const tree = { type, resource, id, woodYield, mesh, harvestTargets, alive: true };
+  const maxHealth = Math.max(2, woodYield + 1);
+  const tree = {
+    type,
+    resource,
+    id,
+    woodYield,
+    mesh,
+    harvestTargets,
+    alive: true,
+    maxHealth,
+    health: maxHealth
+  };
   for (const target of harvestTargets) target.userData.treeResource = tree;
   return tree;
 }
@@ -371,20 +385,27 @@ export function interactWithVegetation(resources, player, camera, inventory, hud
 
   raycaster.setFromCamera(screenCenter, camera);
   const hits = raycaster.intersectObjects(targets, false);
-  const hit = hits.find((result) => result.distance <= 4);
+  const hit = hits.find((result) => result.distance <= TREE_CHOP_RANGE);
 
   if (!hit) {
-    hud.setStatus("Aim at a harvestable tree");
+    hud.setStatus("Aim the axe at a tree");
     return false;
   }
 
   const tree = hit.object.userData.treeResource;
   if (!tree?.alive) return false;
 
+  tree.health = Math.max(0, tree.health - 1);
+  if (tree.health > 0) {
+    hud.setStatus(`Chopping tree (${tree.health} hits left)`, 0.9);
+    return true;
+  }
+
   tree.alive = false;
   tree.mesh.parent.remove(tree.mesh);
   if (tree.id) resources.removedResourceIds?.add(tree.id);
-  inventory.addItem(tree.resource, tree.woodYield ?? 1);
-  hud.setStatus(`+${tree.woodYield ?? 1} wood`);
+  inventory.addItem(tree.resource, TREE_WOOD_PER_BREAK);
+  hud.setStatus("+1 Wood");
+  hud.showFloatingText?.("+1 Wood");
   return true;
 }

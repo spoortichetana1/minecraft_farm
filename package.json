@@ -1,8 +1,8 @@
 {
-  "name": "minecraft-farm",
+  "name": "survivorcraft",
   "version": "1.0.0",
   "private": true,
-  "description": "FarmCraft browser game with a small JavaScript backend server.",
+  "description": "SurvivorCraft browser game with a small JavaScript backend server.",
   "scripts": {
     "start": "node backend/server.js",
     "dev": "node backend/server.js"

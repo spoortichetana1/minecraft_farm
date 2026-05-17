@@ -313,6 +313,44 @@ canvas {
   pointer-events: none;
 }
 
+.floating-text-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.floating-text {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  color: #f6d66f;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-shadow:
+    2px 2px 0 #1e241a,
+    0 0 8px rgba(0, 0, 0, 0.35);
+  transform: translate(-50%, -50%);
+  animation: floating-text-rise 900ms ease-out forwards;
+}
+
+@keyframes floating-text-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.92);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -44px) scale(1.08);
+  }
+}
+
 .hotbar {
   position: fixed;
   left: 50%;
@@ -359,6 +397,62 @@ canvas {
   height: 24px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 3px;
+}
+
+.hotbar-axe {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  transform: rotate(-32deg);
+}
+
+.hotbar-axe-handle,
+.hotbar-axe-collar,
+.hotbar-axe-head,
+.hotbar-axe-edge {
+  position: absolute;
+  display: block;
+}
+
+.hotbar-axe-handle {
+  left: 12px;
+  top: 4px;
+  width: 5px;
+  height: 23px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 2px;
+  background: linear-gradient(90deg, #5d351d, #a66a36 50%, #6f3f20);
+}
+
+.hotbar-axe-collar {
+  left: 9px;
+  top: 4px;
+  width: 11px;
+  height: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 2px;
+  background: #4d5963;
+}
+
+.hotbar-axe-head {
+  left: 14px;
+  top: 1px;
+  width: 15px;
+  height: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 4px 6px 6px 4px;
+  background: linear-gradient(135deg, #f1f7fb, #9eafbd 58%, #64717c);
+  clip-path: polygon(0 18%, 72% 0, 100% 35%, 82% 100%, 12% 82%);
+}
+
+.hotbar-axe-edge {
+  left: 25px;
+  top: 5px;
+  width: 3px;
+  height: 9px;
+  border-radius: 2px;
+  background: #ffffff;
+  opacity: 0.9;
 }
 
 .hotbar-label {

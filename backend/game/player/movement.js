@@ -1,15 +1,22 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { clamp } from "../utils/math.js";
 
+const WORLD_FORWARD = new THREE.Vector3(0, 0, 1);
+const WORLD_RIGHT = new THREE.Vector3(1, 0, 0);
+const MOVEMENT_KEYS = new Set(["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowRight", "ArrowDown", "ArrowLeft"]);
+
 export function createInput(canvas) {
   const input = {
     keys: {},
     yaw: 0,
     pitch: -0.35,
+    facingDirection: WORLD_FORWARD.clone(),
     enabled: false,
     sensitivity: 1,
     primaryAction: null,
+    doubleAction: null,
     secondaryAction: null,
+    clickTimer: null,
     setEnabled(enabled) {
       input.enabled = enabled;
       if (!enabled) input.clearKeys();
@@ -18,14 +25,16 @@ export function createInput(canvas) {
       input.keys = {};
     },
     requestPointerLock() {
-      if (!input.enabled || document.pointerLockElement === canvas) return null;
-      return canvas.requestPointerLock?.() ?? null;
+      return null;
     },
     setSensitivity(value) {
       input.sensitivity = clamp(value, 0.25, 2);
     },
     setPrimaryAction(callback) {
       input.primaryAction = callback;
+    },
+    setDoubleAction(callback) {
+      input.doubleAction = callback;
     },
     setSecondaryAction(callback) {
       input.secondaryAction = callback;
@@ -47,28 +56,37 @@ export function createInput(canvas) {
     event.preventDefault();
     if (!input.enabled) return;
 
-    input.requestPointerLock();
-    if (event.button === 0) input.primaryAction?.();
     if (event.button === 2) input.secondaryAction?.();
+  });
+
+  canvas.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (!input.enabled || event.button !== 0) return;
+
+    if (event.detail >= 2) {
+      clearTimeout(input.clickTimer);
+      input.clickTimer = null;
+      input.doubleAction?.();
+      return;
+    }
+
+    clearTimeout(input.clickTimer);
+    input.clickTimer = setTimeout(() => {
+      input.primaryAction?.();
+      input.clickTimer = null;
+    }, 180);
   });
 
   document.addEventListener("keydown", (event) => {
     if (!input.enabled) return;
+    if (MOVEMENT_KEYS.has(event.code)) event.preventDefault();
     input.keys[event.code] = true;
   });
 
   document.addEventListener("keyup", (event) => {
     if (!input.enabled) return;
+    if (MOVEMENT_KEYS.has(event.code)) event.preventDefault();
     input.keys[event.code] = false;
-  });
-
-  document.addEventListener("mousemove", (event) => {
-    if (!input.enabled) return;
-    if (document.pointerLockElement !== canvas) return;
-
-    input.yaw -= event.movementX * 0.002 * input.sensitivity;
-    input.pitch -= event.movementY * 0.002 * input.sensitivity;
-    input.pitch = clamp(input.pitch, -1.2, 0.8);
   });
 
   return input;
@@ -77,18 +95,22 @@ export function createInput(canvas) {
 export function updatePlayerMovement(player, input, terrain, deltaTime) {
   player.health.update(deltaTime);
 
-  const direction = input.getCameraDirection();
-  const forward = new THREE.Vector3(direction.x, 0, direction.z).normalize();
-  const left = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
   const moveDirection = new THREE.Vector3();
+  const forwardInput = Number(Boolean(input.keys.KeyW || input.keys.ArrowUp))
+    - Number(Boolean(input.keys.KeyS || input.keys.ArrowDown));
+  const sideInput = Number(Boolean(input.keys.KeyA || input.keys.ArrowRight))
+    - Number(Boolean(input.keys.KeyD || input.keys.ArrowLeft));
 
-  if (input.keys.KeyW) moveDirection.add(forward);
-  if (input.keys.KeyS) moveDirection.addScaledVector(forward, -1);
-  if (input.keys.KeyA) moveDirection.addScaledVector(left, -1);
-  if (input.keys.KeyD) moveDirection.add(left);
+  moveDirection
+    .addScaledVector(WORLD_FORWARD, forwardInput)
+    .addScaledVector(WORLD_RIGHT, sideInput);
 
   if (moveDirection.lengthSq() > 0) {
     moveDirection.normalize();
+    if (forwardInput !== 0) {
+      input.facingDirection.copy(WORLD_FORWARD).multiplyScalar(forwardInput);
+      input.yaw = Math.atan2(moveDirection.x, moveDirection.z);
+    }
     player.mesh.position.addScaledVector(moveDirection, player.speed * deltaTime);
     player.mesh.rotation.y = Math.atan2(moveDirection.x, moveDirection.z);
   }
@@ -98,7 +120,7 @@ export function updatePlayerMovement(player, input, terrain, deltaTime) {
   player.mesh.position.y = terrain.getHeight(player.mesh.position.x, player.mesh.position.z) + 0.05;
 
   return {
-    forward,
+    forward: input.facingDirection.clone(),
     isMoving: moveDirection.lengthSq() > 0
   };
 }

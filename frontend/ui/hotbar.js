@@ -1,26 +1,57 @@
 import { BUILDABLE_BLOCKS } from "/backend/game/world/building.js";
+import { TOOL_ITEMS } from "/backend/game/player/tools.js";
+
+const HOTBAR_ITEMS = [
+  ...TOOL_ITEMS,
+  ...BUILDABLE_BLOCKS.map((block) => ({ ...block, kind: "block" }))
+];
+
+function renderItemIcon(item) {
+  if (item.icon === "axe") {
+    return `
+      <span class="hotbar-axe" aria-hidden="true">
+        <span class="hotbar-axe-handle"></span>
+        <span class="hotbar-axe-collar"></span>
+        <span class="hotbar-axe-head"></span>
+        <span class="hotbar-axe-edge"></span>
+      </span>
+    `;
+  }
+
+  return `<span class="hotbar-swatch" style="background:#${item.color.toString(16).padStart(6, "0")}"></span>`;
+}
 
 export function createHotbar() {
   const root = document.getElementById("hotbar");
   let selectedIndex = 0;
+  const selectionListeners = new Set();
+
+  function selectedItem() {
+    return HOTBAR_ITEMS[selectedIndex];
+  }
+
+  function setSelectedIndex(index) {
+    selectedIndex = index;
+    render();
+    for (const listener of selectionListeners) listener(selectedItem());
+  }
 
   function render() {
     if (!root) return;
 
     root.replaceChildren();
-    BUILDABLE_BLOCKS.forEach((item, index) => {
+    HOTBAR_ITEMS.forEach((item, index) => {
       const slot = document.createElement("button");
       slot.type = "button";
       slot.className = `hotbar-slot${index === selectedIndex ? " is-selected" : ""}`;
       slot.setAttribute("aria-label", `Select ${item.label}`);
       slot.innerHTML = `
         <span class="hotbar-key">${index + 1}</span>
-        <span class="hotbar-swatch" style="background:#${item.color.toString(16).padStart(6, "0")}"></span>
+        ${renderItemIcon(item)}
         <span class="hotbar-label">${item.label}</span>
       `;
       slot.addEventListener("click", () => {
-        selectedIndex = index;
-        render();
+        setSelectedIndex(index);
       });
       root.appendChild(slot);
     });
@@ -28,17 +59,21 @@ export function createHotbar() {
 
   document.addEventListener("keydown", (event) => {
     const slotNumber = Number(event.key);
-    if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > BUILDABLE_BLOCKS.length) return;
+    if (!Number.isInteger(slotNumber) || slotNumber < 1 || slotNumber > HOTBAR_ITEMS.length) return;
 
-    selectedIndex = slotNumber - 1;
-    render();
+    setSelectedIndex(slotNumber - 1);
   });
 
   render();
 
   return {
     getSelectedItem() {
-      return BUILDABLE_BLOCKS[selectedIndex];
+      return selectedItem();
+    },
+    onSelectionChange(callback) {
+      selectionListeners.add(callback);
+      callback(selectedItem());
+      return () => selectionListeners.delete(callback);
     },
     update() {
       // Selection changes are event-driven through number keys or direct slot clicks.

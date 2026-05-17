@@ -8,11 +8,10 @@ export function createIntroOverlay(options = {}) {
   const howToPlayClose = document.getElementById("how-to-play-close");
   const settingsClose = document.getElementById("settings-close");
   const musicVolume = document.getElementById("music-volume");
-  const mouseSensitivity = document.getElementById("mouse-sensitivity");
   const fullscreenToggle = document.getElementById("fullscreen-toggle");
   let started = false;
 
-  console.log("[FarmCraft] Menu initialized", {
+  console.log("[SurvivorCraft] Menu initialized", {
     overlayFound: Boolean(overlay),
     startButtonFound: Boolean(startButton)
   });
@@ -37,7 +36,7 @@ export function createIntroOverlay(options = {}) {
   }
 
   function startGame() {
-    console.log("[FarmCraft] Start button clicked", {
+    console.log("[SurvivorCraft] Start button clicked", {
       gameStarted: started
     });
 
@@ -48,7 +47,7 @@ export function createIntroOverlay(options = {}) {
     overlay?.classList.add("is-hidden");
     overlay?.setAttribute("aria-hidden", "true");
     startButton?.blur();
-    console.log("[FarmCraft] Menu hidden", {
+    console.log("[SurvivorCraft] Menu hidden", {
       overlayHidden: overlay?.classList.contains("is-hidden"),
       pointerEvents: overlay ? getComputedStyle(overlay).pointerEvents : null
     });
@@ -62,9 +61,6 @@ export function createIntroOverlay(options = {}) {
   settingsClose?.addEventListener("click", closePanels);
   musicVolume?.addEventListener("input", () => {
     options.onMusicVolumeChange?.(Number(musicVolume.value) / 100);
-  });
-  mouseSensitivity?.addEventListener("input", () => {
-    options.onMouseSensitivityChange?.(Number(mouseSensitivity.value) / 100);
   });
   fullscreenToggle?.addEventListener("click", () => {
     if (document.fullscreenElement) {

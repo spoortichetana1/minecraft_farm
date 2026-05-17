@@ -2,6 +2,7 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 import { createAnimals } from "/backend/game/entities/animals.js";
 import { createMonsterSystem } from "/backend/game/entities/monsters.js";
 import { createPlayer } from "/backend/game/player/player.js";
+import { AXE_TOOL_TYPE } from "/backend/game/player/tools.js";
 import { updateFollowCamera } from "/backend/game/player/camera.js";
 import { createInput, updatePlayerMovement } from "/backend/game/player/movement.js";
 import { createDayNightSystem } from "/backend/game/systems/daynight.js";
@@ -13,7 +14,6 @@ import { createAudioSystem } from "/backend/game/systems/audio.js";
 import { createLighting } from "/backend/game/systems/lighting.js";
 import { createSaveSystem } from "/backend/game/systems/save.js";
 import { createBuildingSystem } from "/backend/game/world/building.js";
-import { createFarmingSystem } from "/backend/game/world/farming.js";
 import { createBlockPatch, createTerrain } from "/backend/game/world/terrain.js";
 import { interactWithVegetation } from "/backend/game/world/vegetation.js";
 
@@ -74,7 +74,7 @@ function isPlaying() {
 }
 
 function startGame() {
-  console.log("[FarmCraft] startGame invoked", {
+  console.log("[SurvivorCraft] startGame invoked", {
     gameStarted,
     gamePaused,
     gameState,
@@ -87,7 +87,7 @@ function startGame() {
   input.clearKeys();
   input.setEnabled(true);
   audio.unlock();
-  console.log("[FarmCraft] Gameplay state enabled", {
+  console.log("[SurvivorCraft] Gameplay state enabled", {
     gameStarted,
     gamePaused,
     gameState,
@@ -97,35 +97,24 @@ function startGame() {
   if (!animationStarted) {
     startAnimationLoop();
   }
-
-  const pointerLockRequest = input.requestPointerLock();
-  console.log("[FarmCraft] Pointer lock requested", {
-    controlsEnabled: input.enabled,
-    requestCreated: Boolean(pointerLockRequest),
-    pointerLocked: document.pointerLockElement === renderer.domElement
-  });
-  pointerLockRequest?.catch?.(() => {
-    console.warn("[FarmCraft] Pointer lock request failed");
-    hud.setStatus("Click the game view to lock mouse controls");
-  });
 }
 
 const intro = createIntroOverlay({
   onStart: startGame,
-  onMusicVolumeChange: (volume) => audio.setVolume(volume),
-  onMouseSensitivityChange: (sensitivity) => input.setSensitivity(sensitivity)
+  onMusicVolumeChange: (volume) => audio.setVolume(volume)
 });
 const player = createPlayer(scene, terrain);
+hotbar.onSelectionChange((item) => {
+  player.equipTool(item.type === AXE_TOOL_TYPE ? AXE_TOOL_TYPE : null);
+});
 const animals = createAnimals(scene, terrain, 72);
 const monsters = createMonsterSystem(scene, terrain);
-const farming = createFarmingSystem(scene, terrain);
-const building = createBuildingSystem(scene, terrain, farming);
+const building = createBuildingSystem(scene, terrain);
 const saveSystem = createSaveSystem({
   player,
   terrain,
   inventory,
   building,
-  farming,
   hud
 });
 
@@ -142,7 +131,7 @@ const context = {
 };
 
 document.body.dataset.gameReady = "true";
-console.log("[FarmCraft] Game systems initialized", {
+console.log("[SurvivorCraft] Game systems initialized", {
   gameStarted,
   gamePaused,
   gameState,
@@ -156,9 +145,22 @@ document.getElementById("load-game")?.addEventListener("click", () => {
 input.setPrimaryAction(() => {
   if (!isPlaying()) return;
 
+  const selectedItem = hotbar.getSelectedItem();
+  if (selectedItem.type === AXE_TOOL_TYPE) {
+    player.swingTool(AXE_TOOL_TYPE);
+    if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
+    monsters.attackNearest(player, hud);
+    return;
+  }
+
   if (building.remove(camera, hud)) return;
-  if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
-  if (farming.interact(camera, inventory, hud)) return;
+  monsters.attackNearest(player, hud);
+});
+
+input.setDoubleAction(() => {
+  if (!isPlaying()) return;
+
+  if (animals.huntNearest(camera, inventory, hud)) return;
   monsters.attackNearest(player, hud);
 });
 
@@ -195,8 +197,8 @@ function animate() {
     hud.setStatus(`Night survived. Day ${dayNight.dayNumber}`, 4);
   }
   updateFollowCamera(camera, player, input, movementState);
+  player.update(deltaTime);
   building.update(camera, player, hotbar);
-  farming.update(deltaTime);
   saveSystem.update(deltaTime);
   animals.update(deltaTime, context);
   monsters.update(deltaTime, context);
@@ -211,7 +213,7 @@ function startAnimationLoop() {
   if (animationStarted) return;
 
   animationStarted = true;
-  console.log("[FarmCraft] Animation loop started", {
+  console.log("[SurvivorCraft] Animation loop started", {
     gameStarted,
     gamePaused,
     gameState

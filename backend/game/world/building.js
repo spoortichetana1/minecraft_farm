@@ -10,7 +10,6 @@ export const BUILDABLE_BLOCKS = [
   { type: "dirt", label: "Dirt", color: 0x8b5a2b },
   { type: "wood", label: "Wood", color: 0x9c6a3a },
   { type: "stone", label: "Stone", color: 0x7a7d82 },
-  { type: "farmland", label: "Farmland", color: 0x6b4423, height: 0.18 },
   { type: "lantern", label: "Lantern", color: 0xffc857, height: 0.55, lightSource: true }
 ];
 
@@ -89,7 +88,7 @@ function isInsidePlayer(cell, player, terrain, blockType) {
   return overlapsX && overlapsY && overlapsZ;
 }
 
-export function createBuildingSystem(scene, terrain, farming) {
+export function createBuildingSystem(scene, terrain) {
   const raycaster = new THREE.Raycaster();
   const screenCenter = new THREE.Vector2(0, 0);
   const blocks = new Map();
@@ -132,10 +131,6 @@ export function createBuildingSystem(scene, terrain, farming) {
 
     blocks.set(keyForCell(cell), { type, cell, mesh, light });
 
-    if (type === "farmland" && cell.level === 0) {
-      farming?.addFarmlandPlot(cell.x, cell.z, mesh);
-    }
-
     return true;
   }
 
@@ -157,10 +152,6 @@ export function createBuildingSystem(scene, terrain, farming) {
   }
 
   function removeBlock(block) {
-    if (block.type === "farmland" && block.cell.level === 0) {
-      farming?.removeFarmlandPlot(block.cell.x, block.cell.z, { keepMesh: true });
-    }
-
     if (block.mesh.parent) {
       block.mesh.parent.remove(block.mesh);
     }
@@ -202,6 +193,11 @@ export function createBuildingSystem(scene, terrain, farming) {
   return {
     place(camera, player, hotbar, hud) {
       const selected = hotbar.getSelectedItem();
+      if (selected.kind !== "block") {
+        hud.setStatus("Select a block to build");
+        return true;
+      }
+
       const target = getPlacementPreview(camera, player, selected);
 
       if (!target.cell) {
@@ -265,6 +261,11 @@ export function createBuildingSystem(scene, terrain, farming) {
     },
     update(camera, player, hotbar) {
       const selected = hotbar.getSelectedItem();
+      if (selected.kind !== "block") {
+        preview.visible = false;
+        return;
+      }
+
       const target = getPlacementPreview(camera, player, selected);
 
       preview.visible = Boolean(target.cell);

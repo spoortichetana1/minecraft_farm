@@ -1,4 +1,4 @@
-const SAVE_KEY = "farmcraft-save-v1";
+const SAVE_KEY = "survivorcraft-save-v1";
 const AUTO_SAVE_SECONDS = 30;
 
 function getPlayerState(player) {
@@ -34,8 +34,7 @@ export function createSaveSystem(context) {
       savedAt: Date.now(),
       player: getPlayerState(context.player),
       inventory: context.inventory.getState(),
-      placedBlocks: context.building.getState(),
-      crops: context.farming.getState()
+      placedBlocks: context.building.getState()
     };
 
     localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
@@ -57,7 +56,6 @@ export function createSaveSystem(context) {
       loadPlayerState(context.player, context.terrain, saveData.player);
       context.terrain.update(context.player.mesh.position);
       context.building.loadState(saveData.placedBlocks);
-      context.farming.loadState(saveData.crops);
       context.hud.setStatus("Game loaded");
       return true;
     } catch (error) {

@@ -7,6 +7,9 @@ const PLAYER_AVOID_DISTANCE = 5;
 const HOSTILE_DETECT_RANGE = 26;
 const HOSTILE_TOUCH_RANGE = 1.25;
 const HOSTILE_DAMAGE = 8;
+const HUNT_RANGE = 5;
+const HUNT_DAMAGE = 1;
+const MEAT_PER_ANIMAL = 1;
 
 function markShadow(mesh) {
   mesh.castShadow = true;
@@ -203,7 +206,9 @@ function createAnimal(scene, terrain, x, z, type) {
     restDuration: 0,
     phase: Math.random() * Math.PI * 2,
     flying,
-    hostile
+    hostile,
+    alive: true,
+    health: hostile ? 3 : 2
   };
 }
 
@@ -232,11 +237,52 @@ export function createAnimals(scene, terrain, count = ANIMAL_COUNT) {
   }
 
   return {
+    huntNearest(camera, inventory, hud) {
+      const raycaster = new THREE.Raycaster();
+      const screenCenter = new THREE.Vector2(0, 0);
+      const targets = animals
+        .filter((animal) => animal.alive)
+        .map((animal) => animal.mesh);
+
+      raycaster.setFromCamera(screenCenter, camera);
+      const hit = raycaster.intersectObjects(targets, true)
+        .find((result) => result.distance <= HUNT_RANGE);
+
+      if (!hit) {
+        hud.setStatus("Double click an animal to collect meat");
+        return false;
+      }
+
+      const animal = animals.find((candidate) => {
+        let current = hit.object;
+        while (current) {
+          if (current === candidate.mesh) return true;
+          current = current.parent;
+        }
+        return false;
+      });
+      if (!animal?.alive) return false;
+
+      animal.health = Math.max(0, animal.health - HUNT_DAMAGE);
+      if (animal.health > 0) {
+        hud.setStatus(`${animal.type} wounded`);
+        return true;
+      }
+
+      animal.alive = false;
+      animal.mesh.parent?.remove(animal.mesh);
+      inventory.addItem("meat", MEAT_PER_ANIMAL);
+      hud.setStatus("+1 Meat");
+      hud.showFloatingText?.("+1 Meat");
+      return true;
+    },
     update(deltaTime, context) {
       const playerPosition = context.player.mesh.position;
       const isNight = context.dayNight?.isNight ?? false;
 
       for (const animal of animals) {
+        if (!animal.alive) continue;
+
         animal.phase += deltaTime * (animal.hostile ? 6.2 : 4.2);
         animal.directionTimer -= deltaTime;
         animal.restTimer -= deltaTime;

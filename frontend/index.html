@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FarmCraft 3D</title>
+    <title>SurvivorCraft 3D</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <div id="intro-overlay" class="intro-overlay" role="dialog" aria-modal="true" aria-labelledby="intro-title">
       <section class="intro-panel main-menu-panel">
-        <h1 id="intro-title">FarmCraft 3D</h1>
+        <h1 id="intro-title">SurvivorCraft 3D</h1>
         <p class="intro-story">
-          You are a lone farmer surviving in a dangerous world.
-          Farm during the day.
+          You are a lone survivor in a dangerous world.
+          Gather supplies during the day.
           Survive monsters at night.
         </p>
         <div class="menu-actions" aria-label="Main menu">
@@ -27,18 +27,19 @@
           <div>
             <h3>Controls</h3>
             <ul>
-              <li><span>WASD</span> Move</li>
-              <li><span>Mouse</span> Look Around</li>
-              <li><span>Left Click</span> Break Block</li>
+              <li><span>WASD / Arrows</span> Move</li>
+              <li><span>Camera</span> Follows movement</li>
+              <li><span>Click</span> Use Tool / Chop</li>
+              <li><span>Double Click</span> Hunt / Collect Meat</li>
               <li><span>Right Click</span> Place Block</li>
-              <li><span>1-6</span> Select Block</li>
+              <li><span>1-6</span> Select Tool / Block</li>
             </ul>
           </div>
           <div>
             <h3>Goals</h3>
             <ul>
               <li>Gather resources</li>
-              <li>Farm crops</li>
+              <li>Collect meat</li>
               <li>Build shelter</li>
               <li>Survive monsters at night</li>
             </ul>
@@ -52,16 +53,12 @@
           <span>Music Volume</span>
           <input id="music-volume" type="range" min="0" max="100" value="70">
         </label>
-        <label class="setting-row" for="mouse-sensitivity">
-          <span>Mouse Sensitivity</span>
-          <input id="mouse-sensitivity" type="range" min="25" max="200" value="100">
-        </label>
         <button id="fullscreen-toggle" class="menu-button menu-button-small" type="button">Toggle Fullscreen</button>
         <button id="settings-close" class="menu-button menu-button-small" type="button">Close</button>
       </section>
     </div>
     <div class="hud">
-      <div class="hud-title">FarmCraft 3D</div>
+      <div class="hud-title">SurvivorCraft 3D</div>
       <div class="hud-row">
         <div class="health-ui" aria-label="Player health">
           <div class="health-ui-top">
@@ -77,10 +74,10 @@
         <span id="hud-time">Time: Day</span>
         <button id="load-game" class="hud-button" type="button">Load Game</button>
       </div>
-      <div id="hud-inventory" class="hud-inventory">Wood: 0 | Seeds: 0 | Wheat: 0 | Eggs: 0 | Stone: 0</div>
-      <div id="hud-status" class="hud-status">Click trees to collect wood. Survive the night.</div>
+      <div id="hud-inventory" class="hud-inventory">Wood: 0 | Meat: 0 | Stone: 0</div>
+      <div id="hud-status" class="hud-status">Equip the axe and chop trees for wood. Survive the night.</div>
     </div>
-    <div id="hotbar" class="hotbar" aria-label="Block hotbar"></div>
+    <div id="hotbar" class="hotbar" aria-label="Tool and block hotbar"></div>
     <div id="death-message" class="death-message" aria-live="assertive">YOU DIED</div>
     <div class="crosshair" aria-hidden="true"></div>
     <script>
@@ -90,10 +87,10 @@
 
         function showStartupError(message) {
           if (status) status.textContent = message;
-          console.error("[FarmCraft] Startup error:", message);
+          console.error("[SurvivorCraft] Startup error:", message);
         }
 
-        console.log("[FarmCraft] Start button created:", Boolean(startButton));
+        console.log("[SurvivorCraft] Start button created:", Boolean(startButton));
 
         if (location.protocol === "file:") {
           showStartupError("Run with npm start, then open http://localhost:3000. The game modules cannot load from a file.");

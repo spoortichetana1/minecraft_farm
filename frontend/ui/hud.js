@@ -11,8 +11,13 @@ export function createHud() {
   const status = document.getElementById("hud-status");
   const deathMessage = document.getElementById("death-message");
   const healthUi = document.querySelector(".health-ui");
+  const floatingTextLayer = document.createElement("div");
   let statusTimer = 0;
   let deathTimer = 0;
+
+  floatingTextLayer.className = "floating-text-layer";
+  floatingTextLayer.setAttribute("aria-hidden", "true");
+  document.body.appendChild(floatingTextLayer);
 
   function renderHealth(playerHealth) {
     const current = Math.round(playerHealth.currentHealth);
@@ -31,6 +36,13 @@ export function createHud() {
       status.textContent = message;
       statusTimer = duration;
     },
+    showFloatingText(message) {
+      const text = document.createElement("div");
+      text.className = "floating-text";
+      text.textContent = message;
+      floatingTextLayer.appendChild(text);
+      text.addEventListener("animationend", () => text.remove(), { once: true });
+    },
     showDeathMessage(duration = 2.5) {
       deathMessage.classList.add("is-visible");
       deathTimer = duration;
@@ -44,7 +56,7 @@ export function createHud() {
       day.textContent = `Day: ${context.dayNight.dayNumber}`;
       night.textContent = `Night ${context.dayNight.currentNight}`;
       time.textContent = `Time: ${context.dayNight.getLabel()}`;
-      inventory.textContent = ["wood", "wheat", ...INVENTORY_TYPES.filter((item) => item !== "wood" && item !== "wheat")]
+      inventory.textContent = INVENTORY_TYPES
         .map((item) => `${INVENTORY_LABELS[item]}: ${context.inventory.items[item] ?? 0}`)
         .join(" | ");
 
@@ -60,7 +72,7 @@ export function createHud() {
         } else {
           status.textContent = context.dayNight.isNight
             ? `Night ${context.dayNight.currentNight}: stay sheltered and survive until sunrise.`
-            : "Day: gather wood, farm crops, and build shelter before night.";
+            : "Day: chop wood, collect meat, and build shelter before night.";
         }
       }
     }
