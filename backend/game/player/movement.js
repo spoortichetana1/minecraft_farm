@@ -84,8 +84,8 @@ export function updatePlayerMovement(player, input, terrain, deltaTime) {
 
   if (input.keys.KeyW) moveDirection.add(forward);
   if (input.keys.KeyS) moveDirection.addScaledVector(forward, -1);
-  if (input.keys.KeyA) moveDirection.add(left);
-  if (input.keys.KeyD) moveDirection.addScaledVector(left, -1);
+  if (input.keys.KeyA) moveDirection.addScaledVector(left, -1);
+  if (input.keys.KeyD) moveDirection.add(left);
 
   if (moveDirection.lengthSq() > 0) {
     moveDirection.normalize();
