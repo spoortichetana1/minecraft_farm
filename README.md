@@ -10,10 +10,11 @@ A browser-based 3D survival world built with Three.js. The old 2D canvas version
 - WASD and arrow-key player movement with camera follow based on movement direction.
 - Equippable axe tool with a visible hand model and swing animation.
 - Health, respawn, and inventory state.
+- Hunger that drains over time and can be restored by eating hunted meat.
 - Tree resources that take several axe hits to chop for wood.
-- Wild animals that can be hunted for meat.
+- Wild animals with health that can be hunted for animal-specific meat drops.
 - Day/night lighting cycle.
-- Night-only shadow monsters that chase and damage the player.
+- Night-only shadow monsters that chase, damage the player, and can be fought with the axe.
 - Moving animals with simple wandering behavior.
 - Wildflowers scattered across the terrain.
 - Ambient light, sun light, and shadows.
@@ -23,8 +24,9 @@ A browser-based 3D survival world built with Three.js. The old 2D canvas version
 
 - Move: `W`, `A`, `S`, `D` or arrow keys
 - Camera: follows the current movement direction
-- Chop nearby trees: single left mouse click
-- Hunt nearby animals / collect meat: double left mouse click
+- Chop trees / hit animals or monsters with axe: single left mouse click
+- Hunt nearby animals / collect meat with axe: double left mouse click
+- Eat selected meat: `Eat` button
 - Build protective stone wall: right mouse click
 - Trade supplies for health: `Trade Health` button
 - Select hotbar item: `1`-`6`
@@ -51,7 +53,7 @@ Run through the JavaScript backend instead of serving `frontend/` directly. The 
 - `frontend/main.js` bootstraps the app, creates the UI-facing rendering context, and starts the render loop.
 - `frontend/ui/` owns HUD updates and player feedback.
 - `frontend/styles.css` contains fullscreen page and HUD styling.
-- `backend/game/` owns gameplay modules for world generation, player behavior, entities, inventory, saving, time, lighting, and audio.
+- `backend/game/` owns gameplay modules for world generation, player behavior, entities, inventory, saving, time, and lighting.
 - `backend/server.js` serves files from `frontend/`, serves backend gameplay modules at `/game/`, and exposes small REST endpoints.
 - `design/game-design.md` keeps the project design notes.
 

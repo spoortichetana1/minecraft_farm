@@ -9,6 +9,10 @@ const gameState = {
   inventory: {
     wood: 0,
     meat: 0,
+    foxMeat: 0,
+    beef: 0,
+    chickenMeat: 0,
+    venison: 0,
     stone: 0
   },
   updatedAt: new Date().toISOString()
@@ -93,6 +97,10 @@ function normalizeInventory(inventory) {
   return {
     wood: Math.max(0, Number(inventory?.wood) || 0),
     meat: Math.max(0, Number(inventory?.meat) || 0),
+    foxMeat: Math.max(0, Number(inventory?.foxMeat) || 0),
+    beef: Math.max(0, Number(inventory?.beef) || 0),
+    chickenMeat: Math.max(0, Number(inventory?.chickenMeat) || 0),
+    venison: Math.max(0, Number(inventory?.venison) || 0),
     stone: Math.max(0, Number(inventory?.stone) || 0)
   };
 }

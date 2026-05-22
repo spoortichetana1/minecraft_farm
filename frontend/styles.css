@@ -259,13 +259,15 @@ canvas {
   outline-offset: 2px;
 }
 
-.health-ui {
+.health-ui,
+.hunger-ui {
   display: grid;
   gap: 4px;
   min-width: 180px;
 }
 
-.health-ui-top {
+.health-ui-top,
+.hunger-ui-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -279,25 +281,67 @@ canvas {
   text-shadow: 1px 1px 0 #250000;
 }
 
-.health-bar {
+.health-bar,
+.hunger-bar {
   width: 100%;
   height: 10px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.45);
   border-radius: 2px;
+}
+
+.health-bar {
   background: rgba(40, 10, 10, 0.78);
 }
 
-.health-bar-fill {
+.hunger-bar {
+  background: rgba(44, 32, 8, 0.78);
+}
+
+.health-bar-fill,
+.hunger-bar-fill {
   width: 100%;
   height: 100%;
-  background: #d92d20;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   transition: width 120ms linear;
 }
 
+.health-bar-fill {
+  background: #d92d20;
+}
+
+.hunger-bar-fill {
+  background: #f2a51a;
+}
+
 .health-ui.is-invincible .health-bar-fill {
   background: #ff9f1c;
+}
+
+.hunger-ui.is-starving .hunger-bar-fill {
+  background: #d92d20;
+}
+
+.hud-food-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d8edf5;
+}
+
+.hud-food-control select {
+  min-height: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 4px;
+  background: rgba(12, 16, 14, 0.72);
+  color: #ffffff;
+  font: inherit;
+  padding: 2px 6px;
+}
+
+.hud-food-control select:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .crosshair {

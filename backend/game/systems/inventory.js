@@ -1,6 +1,10 @@
 export const INVENTORY_LABELS = {
   wood: "Wood",
   meat: "Meat",
+  foxMeat: "Fox Meat",
+  beef: "Beef",
+  chickenMeat: "Chicken Meat",
+  venison: "Venison",
   stone: "Stone"
 };
 
@@ -10,6 +14,10 @@ function createStartingItems() {
   return {
     wood: 0,
     meat: 0,
+    foxMeat: 0,
+    beef: 0,
+    chickenMeat: 0,
+    venison: 0,
     stone: 0
   };
 }

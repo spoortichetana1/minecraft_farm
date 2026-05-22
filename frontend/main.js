@@ -6,11 +6,11 @@ import { AXE_TOOL_TYPE } from "/backend/game/player/tools.js";
 import { updateFollowCamera } from "/backend/game/player/camera.js";
 import { createInput, updatePlayerMovement } from "/backend/game/player/movement.js";
 import { createDayNightSystem } from "/backend/game/systems/daynight.js";
-import { createInventory } from "/backend/game/systems/inventory.js";
+import { FOOD_VALUES } from "/backend/game/systems/hunger.js";
+import { createInventory, INVENTORY_LABELS } from "/backend/game/systems/inventory.js";
 import { createHud } from "./ui/hud.js";
 import { createHotbar } from "./ui/hotbar.js";
 import { createIntroOverlay } from "./ui/intro.js";
-import { createAudioSystem } from "/backend/game/systems/audio.js";
 import { createLighting } from "/backend/game/systems/lighting.js";
 import { createSaveSystem } from "/backend/game/systems/save.js";
 import { createBuildingSystem } from "/backend/game/world/building.js";
@@ -56,7 +56,6 @@ const inventory = createInventory();
 const dayNight = createDayNightSystem();
 const hud = createHud();
 const hotbar = createHotbar();
-const audio = createAudioSystem();
 const input = createInput(renderer.domElement);
 const GAME_STATE = {
   MENU: "MENU",
@@ -92,7 +91,6 @@ function startGame() {
   gameState = GAME_STATE.PLAYING;
   input.clearKeys();
   input.setEnabled(true);
-  audio.unlock();
   console.log("[SurvivorCraft] Gameplay state enabled", {
     gameStarted,
     gamePaused,
@@ -106,8 +104,7 @@ function startGame() {
 }
 
 const intro = createIntroOverlay({
-  onStart: startGame,
-  onMusicVolumeChange: (volume) => audio.setVolume(volume)
+  onStart: startGame
 });
 const player = createPlayer(scene, terrain);
 hotbar.onSelectionChange((item) => {
@@ -148,6 +145,23 @@ document.getElementById("load-game")?.addEventListener("click", () => {
   saveSystem.loadGame();
 });
 
+document.getElementById("eat-food")?.addEventListener("click", () => {
+  if (!isPlaying()) return;
+
+  const foodType = document.getElementById("eat-food-select")?.value;
+  const result = player.eatFood(foodType, inventory);
+  if (!result.eaten) {
+    hud.setStatus(result.reason === "full" ? "Hunger is already full" : `No ${INVENTORY_LABELS[foodType] ?? "food"} to eat`);
+    return;
+  }
+
+  const label = INVENTORY_LABELS[result.type] ?? "Food";
+  hud.updateInventory(inventory);
+  hud.updateHunger(player.hunger);
+  hud.setStatus(`Ate ${label} (+${FOOD_VALUES[result.type]} hunger)`);
+  hud.showFloatingText?.(`+${FOOD_VALUES[result.type]} Hunger`);
+});
+
 document.getElementById("trade-health")?.addEventListener("click", () => {
   if (!isPlaying()) return;
 
@@ -176,18 +190,25 @@ input.setPrimaryAction(() => {
   if (!isPlaying()) return;
 
   const selectedItem = hotbar.getSelectedItem();
-  if (selectedItem.type === AXE_TOOL_TYPE) player.swingTool(AXE_TOOL_TYPE);
-  if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
+  if (selectedItem.type === AXE_TOOL_TYPE) {
+    if (!player.swingTool(AXE_TOOL_TYPE)) return;
+    if (interactWithVegetation(terrain.getTreeResources(), player, camera, inventory, hud)) return;
+    if (animals.hitNearest(player, inventory, hud)) return;
+    if (monsters.attackNearest(player, hud)) return;
+  }
 
   if (building.remove(camera, hud)) return;
-  monsters.attackNearest(player, hud);
 });
 
 input.setDoubleAction(() => {
   if (!isPlaying()) return;
 
-  if (animals.huntNearest(player, inventory, hud)) return;
-  monsters.attackNearest(player, hud);
+  const selectedItem = hotbar.getSelectedItem();
+  if (selectedItem.type === AXE_TOOL_TYPE) {
+    if (!player.swingTool(AXE_TOOL_TYPE)) return;
+    if (animals.huntNearest(player, inventory, hud)) return;
+    if (monsters.attackNearest(player, hud)) return;
+  }
 });
 
 input.setSecondaryAction(() => {
@@ -228,7 +249,6 @@ function animate() {
   saveSystem.update(deltaTime);
   animals.update(deltaTime, context);
   monsters.update(deltaTime, context);
-  audio.update(deltaTime, { dayNight, movementState });
   hud.update(deltaTime, context);
   hotbar.update();
 

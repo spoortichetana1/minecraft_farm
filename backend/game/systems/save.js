@@ -6,7 +6,8 @@ function getPlayerState(player) {
     x: player.mesh.position.x,
     y: player.mesh.position.y,
     z: player.mesh.position.z,
-    rotationY: player.mesh.rotation.y
+    rotationY: player.mesh.rotation.y,
+    hunger: player.hunger.getState()
   };
 }
 
@@ -23,6 +24,7 @@ function loadPlayerState(player, terrain, playerState) {
   if (Number.isFinite(rotationY)) {
     player.mesh.rotation.y = rotationY;
   }
+  player.hunger.setValue(playerState.hunger?.currentHunger);
 }
 
 export function createSaveSystem(context) {

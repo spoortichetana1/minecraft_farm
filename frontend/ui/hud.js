@@ -4,6 +4,8 @@ export function createHud() {
   const health = document.getElementById("hud-health");
   const healthFill = document.getElementById("hud-health-fill");
   const hearts = document.getElementById("hud-hearts");
+  const hunger = document.getElementById("hud-hunger");
+  const hungerFill = document.getElementById("hud-hunger-fill");
   const day = document.getElementById("hud-day");
   const night = document.getElementById("hud-night");
   const time = document.getElementById("hud-time");
@@ -11,6 +13,7 @@ export function createHud() {
   const status = document.getElementById("hud-status");
   const deathMessage = document.getElementById("death-message");
   const healthUi = document.querySelector(".health-ui");
+  const hungerUi = document.querySelector(".hunger-ui");
   const floatingTextLayer = document.createElement("div");
   let statusTimer = 0;
   let deathTimer = 0;
@@ -31,10 +34,32 @@ export function createHud() {
     healthUi.classList.toggle("is-invincible", playerHealth.isInvincible());
   }
 
+  function renderInventory(playerInventory) {
+    inventory.textContent = INVENTORY_TYPES
+      .map((item) => `${INVENTORY_LABELS[item]}: ${playerInventory.items[item] ?? 0}`)
+      .join(" | ");
+  }
+
+  function renderHunger(playerHunger) {
+    const current = Math.round(playerHunger.currentHunger);
+    const max = playerHunger.maxValue;
+    const percent = Math.max(0, Math.min(1, current / max));
+
+    hunger.textContent = `Hunger: ${current} / ${max}`;
+    hungerFill.style.width = `${percent * 100}%`;
+    hungerUi.classList.toggle("is-starving", current <= 0);
+  }
+
   return {
     setStatus(message, duration = 2) {
       status.textContent = message;
       statusTimer = duration;
+    },
+    updateInventory(playerInventory) {
+      renderInventory(playerInventory);
+    },
+    updateHunger(playerHunger) {
+      renderHunger(playerHunger);
     },
     showFloatingText(message) {
       const text = document.createElement("div");
@@ -53,12 +78,11 @@ export function createHud() {
       deathTimer = Math.max(0, deathTimer - deltaTime);
 
       renderHealth(context.player.health);
+      renderHunger(context.player.hunger);
       day.textContent = `Day: ${context.dayNight.dayNumber}`;
       night.textContent = `Night ${context.dayNight.currentNight}`;
       time.textContent = `Time: ${context.dayNight.getLabel()}`;
-      inventory.textContent = INVENTORY_TYPES
-        .map((item) => `${INVENTORY_LABELS[item]}: ${context.inventory.items[item] ?? 0}`)
-        .join(" | ");
+      renderInventory(context.inventory);
 
       if (deathTimer <= 0) {
         deathMessage.classList.remove("is-visible");

@@ -29,8 +29,9 @@
             <ul>
               <li><span>WASD / Arrows</span> Move</li>
               <li><span>Camera</span> Follows movement</li>
-              <li><span>Click</span> Chop Nearby Tree</li>
-              <li><span>Double Click</span> Hunt Nearby Animal</li>
+              <li><span>Click</span> Chop / Attack With Axe</li>
+              <li><span>Double Click</span> Hunt With Axe</li>
+              <li><span>Eat</span> Restore Hunger</li>
               <li><span>Right Click</span> Build Stone Wall</li>
               <li><span>1-6</span> Select Tool / Block</li>
             </ul>
@@ -40,6 +41,7 @@
             <ul>
               <li>Gather resources</li>
               <li>Collect meat</li>
+              <li>Eat to manage hunger</li>
               <li>Build shelter</li>
               <li>Survive monsters at night</li>
             </ul>
@@ -49,10 +51,6 @@
       </section>
       <section id="settings-panel" class="menu-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title" aria-hidden="true">
         <h2 id="settings-title">Settings</h2>
-        <label class="setting-row" for="music-volume">
-          <span>Music Volume</span>
-          <input id="music-volume" type="range" min="0" max="100" value="70">
-        </label>
         <button id="fullscreen-toggle" class="menu-button menu-button-small" type="button">Toggle Fullscreen</button>
         <button id="settings-close" class="menu-button menu-button-small" type="button">Close</button>
       </section>
@@ -69,13 +67,31 @@
             <div id="hud-health-fill" class="health-bar-fill"></div>
           </div>
         </div>
+        <div class="hunger-ui" aria-label="Player hunger">
+          <div class="hunger-ui-top">
+            <span id="hud-hunger">Hunger: 100 / 100</span>
+          </div>
+          <div class="hunger-bar" aria-hidden="true">
+            <div id="hud-hunger-fill" class="hunger-bar-fill"></div>
+          </div>
+        </div>
         <span id="hud-day">Day: 1</span>
         <span id="hud-night">Night 1</span>
         <span id="hud-time">Time: Day</span>
+        <label class="hud-food-control" for="eat-food-select">
+          <span>Food</span>
+          <select id="eat-food-select">
+            <option value="foxMeat">Fox Meat</option>
+            <option value="beef">Beef</option>
+            <option value="chickenMeat">Chicken Meat</option>
+            <option value="venison">Venison</option>
+          </select>
+        </label>
+        <button id="eat-food" class="hud-button" type="button">Eat</button>
         <button id="load-game" class="hud-button" type="button">Load Game</button>
         <button id="trade-health" class="hud-button" type="button">Trade Health</button>
       </div>
-      <div id="hud-inventory" class="hud-inventory">Wood: 0 | Meat: 0 | Stone: 0</div>
+      <div id="hud-inventory" class="hud-inventory">Wood: 0 | Meat: 0 | Fox Meat: 0 | Beef: 0 | Chicken Meat: 0 | Venison: 0 | Stone: 0</div>
       <div id="hud-status" class="hud-status">Equip the axe and chop trees for wood. Survive the night.</div>
     </div>
     <div id="hotbar" class="hotbar" aria-label="Tool and block hotbar"></div>

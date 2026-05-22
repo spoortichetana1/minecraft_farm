@@ -1,5 +1,6 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { randomChoice, randomRange } from "../utils/math.js";
+import { INVENTORY_LABELS } from "../systems/inventory.js";
 
 const ANIMAL_COUNT = 72;
 const SPAWN_RADIUS = 135;
@@ -8,7 +9,14 @@ const HOSTILE_DETECT_RANGE = 26;
 const HOSTILE_TOUCH_RANGE = 1.25;
 const HOSTILE_DAMAGE = 8;
 const HUNT_RANGE = 4.2;
-const MEAT_PER_ANIMAL = 1;
+const AXE_DAMAGE = 1;
+const DROP_AMOUNT = 1;
+const ANIMAL_DROPS = {
+  fox: "foxMeat",
+  cow: "beef",
+  chicken: "chickenMeat",
+  deer: "venison"
+};
 
 function markShadow(mesh) {
   mesh.castShadow = true;
@@ -174,6 +182,14 @@ function scaleForType(type) {
   return randomRange(0.85, 1.14);
 }
 
+function getAnimalDrop(type) {
+  return ANIMAL_DROPS[type] ?? "meat";
+}
+
+function getDropLabel(type) {
+  return INVENTORY_LABELS[type] ?? "Meat";
+}
+
 function createSnakeMesh(scale) {
   const group = new THREE.Group();
   for (let i = 0; i < 5; i++) {
@@ -235,28 +251,50 @@ export function createAnimals(scene, terrain, count = ANIMAL_COUNT) {
     populateBiome(scene, terrain, animals, biome, perBiome);
   }
 
+  function getNearestLivingAnimal(player) {
+    return animals
+      .filter((animal) => animal.alive)
+      .map((animal) => ({
+        animal,
+        distance: animal.mesh.position.distanceTo(player.mesh.position)
+      }))
+      .filter((entry) => entry.distance <= HUNT_RANGE)
+      .sort((a, b) => a.distance - b.distance)[0]?.animal;
+  }
+
+  function hitAnimal(animal, inventory, hud, damage = AXE_DAMAGE) {
+    animal.health = Math.max(0, animal.health - damage);
+
+    if (animal.health > 0) {
+      hud.setStatus(`Hit ${animal.type} (${animal.health} health left)`, 0.9);
+      return true;
+    }
+
+    animal.alive = false;
+    animal.mesh.parent?.remove(animal.mesh);
+
+    const drop = getAnimalDrop(animal.type);
+    const dropLabel = getDropLabel(drop);
+    inventory.addItem(drop, DROP_AMOUNT);
+    hud.updateInventory?.(inventory);
+    hud.setStatus(`+${DROP_AMOUNT} ${dropLabel}`);
+    hud.showFloatingText?.(`+${DROP_AMOUNT} ${dropLabel}`);
+    return true;
+  }
+
   return {
-    huntNearest(player, inventory, hud) {
-      const animal = animals
-        .filter((animal) => animal.alive)
-        .map((animal) => ({
-          animal,
-          distance: animal.mesh.position.distanceTo(player.mesh.position)
-        }))
-        .filter((entry) => entry.distance <= HUNT_RANGE)
-        .sort((a, b) => a.distance - b.distance)[0]?.animal;
+    hitNearest(player, inventory, hud, damage = AXE_DAMAGE) {
+      const animal = getNearestLivingAnimal(player);
 
       if (!animal) {
         hud.setStatus("Move closer to an animal");
         return false;
       }
 
-      animal.alive = false;
-      animal.mesh.parent?.remove(animal.mesh);
-      inventory.addItem("meat", MEAT_PER_ANIMAL);
-      hud.setStatus("+1 Meat");
-      hud.showFloatingText?.("+1 Meat");
-      return true;
+      return hitAnimal(animal, inventory, hud, damage);
+    },
+    huntNearest(player, inventory, hud) {
+      return this.hitNearest(player, inventory, hud);
     },
     update(deltaTime, context) {
       const playerPosition = context.player.mesh.position;

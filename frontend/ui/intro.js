@@ -7,7 +7,6 @@ export function createIntroOverlay(options = {}) {
   const settingsPanel = document.getElementById("settings-panel");
   const howToPlayClose = document.getElementById("how-to-play-close");
   const settingsClose = document.getElementById("settings-close");
-  const musicVolume = document.getElementById("music-volume");
   const fullscreenToggle = document.getElementById("fullscreen-toggle");
   let started = false;
 
@@ -59,9 +58,6 @@ export function createIntroOverlay(options = {}) {
   settingsButton?.addEventListener("click", () => showPanel(settingsPanel));
   howToPlayClose?.addEventListener("click", closePanels);
   settingsClose?.addEventListener("click", closePanels);
-  musicVolume?.addEventListener("input", () => {
-    options.onMusicVolumeChange?.(Number(musicVolume.value) / 100);
-  });
   fullscreenToggle?.addEventListener("click", () => {
     if (document.fullscreenElement) {
       document.exitFullscreen?.();

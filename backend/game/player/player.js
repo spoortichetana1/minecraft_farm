@@ -1,9 +1,12 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { createHealth } from "../systems/health.js";
+import { createHunger, FOOD_VALUES } from "../systems/hunger.js";
 import { AXE_TOOL_TYPE } from "./tools.js";
 
 const PLAYER_SPAWN = new THREE.Vector3(0, 0, 7);
-const AXE_SWING_DURATION = 0.32;
+const AXE_SWING_DURATION = 0.34;
+const AXE_ATTACK_COOLDOWN = 0.46;
+const STARVATION_DAMAGE = 4;
 
 function addShadow(mesh) {
   mesh.castShadow = true;
@@ -131,6 +134,7 @@ function createStickmanMesh() {
 export function createPlayer(scene, terrain) {
   const mesh = createStickmanMesh();
   const health = createHealth(100);
+  const hunger = createHunger(100);
   const axe = mesh.userData.toolModels?.[AXE_TOOL_TYPE];
   const axeRestRotation = {
     x: axe?.rotation.x ?? 0,
@@ -139,9 +143,11 @@ export function createPlayer(scene, terrain) {
   };
   let equippedTool = null;
   let axeSwingTime = 0;
+  let axeCooldownTime = 0;
 
   function respawn() {
     health.reset();
+    hunger.reset();
     mesh.position.set(
       PLAYER_SPAWN.x,
       terrain.getHeight(PLAYER_SPAWN.x, PLAYER_SPAWN.z) + 0.05,
@@ -155,6 +161,7 @@ export function createPlayer(scene, terrain) {
   return {
     mesh,
     health,
+    hunger,
     speed: 6,
     respawn,
     equipTool(type) {
@@ -163,19 +170,48 @@ export function createPlayer(scene, terrain) {
     },
     swingTool(type = equippedTool) {
       if (type !== AXE_TOOL_TYPE || equippedTool !== AXE_TOOL_TYPE) return false;
+      if (axeCooldownTime > 0) return false;
 
       axeSwingTime = AXE_SWING_DURATION;
+      axeCooldownTime = AXE_ATTACK_COOLDOWN;
       return true;
     },
     update(deltaTime) {
+      hunger.update(deltaTime);
+      if (hunger.currentHunger <= 0 && health.damage(STARVATION_DAMAGE) && health.currentHealth <= 0) {
+        respawn();
+      }
+
       if (!axe) return;
 
       const swingProgress = 1 - axeSwingTime / AXE_SWING_DURATION;
-      const swingArc = axeSwingTime > 0 ? Math.sin(swingProgress * Math.PI) : 0;
-      axe.rotation.x = axeRestRotation.x - swingArc * 1.15;
+      const swingArc = axeSwingTime > 0 ? Math.sin(Math.min(1, swingProgress) * Math.PI) : 0;
+      axe.rotation.x = axeRestRotation.x - swingArc * 1.35;
       axe.rotation.y = axeRestRotation.y;
-      axe.rotation.z = axeRestRotation.z + swingArc * 0.35;
+      axe.rotation.z = axeRestRotation.z + swingArc * 0.45;
       axeSwingTime = Math.max(0, axeSwingTime - deltaTime);
+      axeCooldownTime = Math.max(0, axeCooldownTime - deltaTime);
+    },
+    eatFood(type, inventory) {
+      const hungerValue = FOOD_VALUES[type];
+      if (!hungerValue) {
+        return { eaten: false, reason: "not-food" };
+      }
+
+      if (hunger.currentHunger >= hunger.maxValue) {
+        return { eaten: false, reason: "full" };
+      }
+
+      if (!inventory.removeItem(type, 1)) {
+        return { eaten: false, reason: "missing" };
+      }
+
+      hunger.restore(hungerValue);
+      return {
+        eaten: true,
+        restored: hungerValue,
+        type
+      };
     },
     damage(amount) {
       const applied = health.damage(amount);
